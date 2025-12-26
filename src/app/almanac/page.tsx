@@ -8,7 +8,8 @@ import {
   seedCategories 
 } from '@/lib/garden-utils'
 import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns'
-import { Moon, Sun, Droplets, Thermometer, Wind, Leaf, Bug, Calendar } from 'lucide-react'
+import { Moon, Sun, Droplets, Thermometer, Wind, Leaf, Bug, Calendar, BookOpen, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
@@ -97,6 +98,29 @@ export default async function AlmanacPage() {
           Your guide to successful gardening with moon phases, companion planting, and seasonal tips
         </p>
       </div>
+
+      {/* Plant Encyclopedia Promo */}
+      <Link 
+        href="/plants"
+        className="block card bg-gradient-to-r from-garden-50 to-emerald-50 border-garden-200 hover:shadow-lg transition-shadow group"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-garden-100 rounded-full flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-garden-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-garden-900 group-hover:text-garden-700">
+                Plant Encyclopedia
+              </h2>
+              <p className="text-sm text-garden-700">
+                Explore detailed guides with growing tips, recipes, medicinal uses, and more for 50+ plants
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-5 h-5 text-garden-600 group-hover:translate-x-1 transition-transform" />
+        </div>
+      </Link>
 
       {/* Today's Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

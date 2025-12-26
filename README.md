@@ -7,15 +7,30 @@ A comprehensive web application to help gardeners track their seeds, plan planti
 ### 🆓 Free Features
 - **📦 Seed Inventory Management** - Track seeds you have at home with quantity, brand, variety, and planting notes
 - **⭐ Seed Wishlist** - Keep track of seeds you want to buy with priority levels and purchase links
+- **🌿 Plant Encyclopedia** - Browse 50+ plants with detailed information, growing guides, recipes, and medicinal uses
+- **💡 Community Contributions** - Submit suggestions to improve plant information
 - **⚙️ Settings** - Configure your USDA hardiness zone and preferences
 
 ### 💎 Pro Features (Starting at $5/year)
 - **📍 Planting Log** - Record when and where you plant seeds, track growth events (germination, transplanting, harvest)
 - **📅 Planting Calendar** - View optimal planting times based on your hardiness zone with frost date calculations
 - **📖 Farmers Almanac** - Moon phases, companion planting guides, pest control tips, and seasonal advice
-- **🌿 Plant Database** - Access comprehensive planting guides for 50+ vegetables, herbs, and flowers
 - **📤 Export Data** - Download your garden data anytime in JSON format
 - **🎯 Priority Support** - Get help when you need it
+
+### 📚 Plant Encyclopedia
+Each plant page includes:
+- **General Information** - Description, scientific name, and growing overview
+- **Hardiness Zones** - Compatible and optimal growing zones
+- **Fun Facts** - Interesting trivia and history
+- **Varieties** - Popular cultivars and their characteristics
+- **Culinary Uses** - Cooking tips, flavor profiles, and recipes
+- **Craft & DIY Ideas** - Creative projects using plants (soaps, dyes, wreaths, pressed art)
+- **Medicinal & Holistic Uses** - Traditional and modern applications
+- **Growing Guide** - Planting times, spacing, and care instructions
+- **Companion Planting** - What to plant together and what to avoid
+- **Pest & Disease Management** - Common problems and organic solutions
+- **Community Suggestions** - Logged-in users can submit updates and improvements
 
 ### 💰 Subscription Tiers
 | Tier | Price | Features |
@@ -173,8 +188,8 @@ For magic link authentication, you need an SMTP server. Options include:
 
 ```
 ├── prisma/
-│   ├── schema.prisma       # Database schema with User, Seed, Planting models
-│   └── seed.ts             # Seed data for 50+ planting guides
+│   ├── schema.prisma       # Database schema with User, Seed, Planting, Plant models
+│   └── seed.ts             # Seed data for 50+ planting guides with rich content
 ├── src/
 │   ├── app/
 │   │   ├── api/
@@ -182,6 +197,7 @@ For magic link authentication, you need an SMTP server. Options include:
 │   │   │   ├── auth/       # Auth endpoints (register, magic links, password reset)
 │   │   │   ├── cron/       # Cron jobs (subscription processing, reminders)
 │   │   │   ├── plantings/  # Planting CRUD + events
+│   │   │   ├── plants/     # Plant encyclopedia API + suggestions
 │   │   │   ├── seeds/      # Seed inventory CRUD
 │   │   │   ├── settings/   # User settings
 │   │   │   ├── square/     # Payment checkout & webhooks
@@ -190,6 +206,7 @@ For magic link authentication, you need an SMTP server. Options include:
 │   │   ├── auth/           # Auth pages (signin, signup, forgot password)
 │   │   ├── seeds/          # Seed inventory pages
 │   │   ├── plantings/      # Planting log pages with event tracking
+│   │   ├── plants/         # Plant encyclopedia with detail pages
 │   │   ├── calendar/       # Planting calendar with zone-based dates
 │   │   ├── wishlist/       # Seed wishlist pages
 │   │   ├── almanac/        # Farmers almanac with moon phases
@@ -268,6 +285,14 @@ For magic link authentication, you need an SMTP server. Options include:
 | POST | `/api/wishlist` | Add to wishlist |
 | PUT | `/api/wishlist/[id]` | Update wishlist item |
 | DELETE | `/api/wishlist/[id]` | Remove from wishlist |
+
+### Plants (Encyclopedia)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/plants` | List all plants with basic info |
+| GET | `/api/plants/[id]` | Get full plant details |
+| POST | `/api/plants/[id]/suggestions` | Submit improvement suggestion |
+| GET | `/api/plants/[id]/suggestions` | List suggestions (admin only) |
 
 ### Subscriptions
 | Method | Endpoint | Description |

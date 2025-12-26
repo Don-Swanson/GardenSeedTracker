@@ -68,9 +68,10 @@ export async function POST(request: Request) {
     // Create regular subscription checkout
     return await createSubscriptionCheckout(user, tier)
   } catch (error: any) {
+    // SECURITY: Don't expose internal error details to clients
     console.error('Checkout error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to create checkout session' },
+      { error: 'Failed to create checkout session. Please try again later.' },
       { status: 500 }
     )
   }

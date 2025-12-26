@@ -259,6 +259,34 @@ model PlantingGuide {
   scientificName        String?
   description           String?
   
+  // Detailed information
+  generalInfo           String?  // Extended description and history
+  funFacts              String?  // JSON array of interesting facts
+  variations            String?  // JSON array of popular varieties
+  
+  // Growing zones
+  hardinessZones        String?  // JSON array of zones (e.g., ["3a", "3b", "4a", ...])
+  optimalZones          String?  // JSON array of best zones
+  zoneNotes             String?  // Special zone-related notes
+  
+  // Culinary uses
+  culinaryUses          String?  // Description of culinary applications
+  recipes               String?  // JSON array of recipe objects
+  flavorProfile         String?  // Taste description
+  nutritionalInfo       String?  // Nutritional benefits
+  
+  // Medicinal & holistic uses
+  medicinalUses         String?  // Traditional/modern medicinal uses
+  holisticUses          String?  // Aromatherapy, companion uses, etc.
+  cautions              String?  // Safety warnings or contraindications
+  
+  // Craft & DIY uses
+  craftIdeas            String?  // JSON array of craft projects using the plant
+  
+  // Historical & cultural
+  history               String?  // Origin and historical significance
+  culturalSignificance  String?  // Cultural or symbolic meanings
+  
   // Timing
   indoorStartWeeks      Int?
   outdoorStartWeeks     Int?
@@ -309,6 +337,37 @@ model PlantingGuide {
   
   seeds                 Seed[]
   wishlistItems         WishlistItem[]
+  suggestions           PlantSuggestion[]
+}
+
+// ==================== PLANT SUGGESTIONS ====================
+
+model PlantSuggestion {
+  id              String   @id @default(cuid())
+  plantId         String
+  plant           PlantingGuide @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  
+  userId          String?  // Optional - can allow anonymous suggestions
+  userEmail       String?  // For follow-up if not logged in
+  userName        String?  // Display name
+  
+  section         String   // Which section: "general", "zones", "facts", "variations", "recipes", "medicinal", "holistic"
+  suggestionType  String   // "addition", "correction", "removal"
+  currentContent  String?  // What currently exists (for corrections)
+  suggestedContent String  // The suggested content
+  sourceUrl       String?  // Citation/source for the information
+  notes           String?  // Additional context from user
+  
+  status          String   @default("pending") // "pending", "reviewing", "approved", "rejected"
+  adminNotes      String?  // Notes from reviewer
+  reviewedById    String?  // Admin who reviewed
+  reviewedAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([plantId])
+  @@index([status])
 }
 
 // ==================== FEATURE REQUESTS ====================
@@ -324,6 +383,7 @@ model PlantRequest {
   description     String?
   reason          String?
   additionalInfo  String?
+  sourceUrl       String?
   
   status          String   @default("pending") // "pending", "reviewing", "approved", "rejected", "added"
   adminNotes      String?
@@ -334,4 +394,53 @@ model PlantRequest {
   
   @@index([userId])
   @@index([status])
+}
+
+// ==================== ADMIN AUDIT LOG ====================
+
+model AdminAuditLog {
+  id              String   @id @default(cuid())
+  
+  // Who performed the action
+  adminId         String
+  adminEmail      String
+  
+  // What action was performed
+  action          String   // "grant_lifetime", "revoke_lifetime", "delete_user_data", "approve_suggestion", "reject_suggestion", etc.
+  
+  // Who/what was affected
+  targetType      String   // "user", "suggestion", "plant", "seed", etc.
+  targetId        String   // ID of the affected entity
+  targetEmail     String?  // Email if target is a user (for searchability)
+  
+  // Details about the action
+  reason          String?  // Admin-provided reason
+  details         String?  // JSON string with additional details
+  previousState   String?  // JSON of previous state (for reversibility)
+  newState        String?  // JSON of new state
+  
+  // Request metadata
+  ipAddress       String?
+  userAgent       String?
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([adminId])
+  @@index([targetId])
+  @@index([targetEmail])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ==================== CSRF TOKENS ====================
+
+model CsrfToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  sessionId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@index([sessionId])
+  @@index([expiresAt])
 }

@@ -16,7 +16,8 @@ import {
   LogIn,
   LogOut,
   User,
-  Crown
+  Crown,
+  Leaf
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -26,6 +27,7 @@ const navItems = [
   { href: '/plantings', label: 'Planting Log', icon: MapPin, requiresAuth: true, requiresPaid: true },
   { href: '/calendar', label: 'Planting Calendar', icon: CalendarDays, requiresAuth: true, requiresPaid: true },
   { href: '/wishlist', label: 'Wishlist', icon: Star, requiresAuth: true },
+  { href: '/plants', label: 'Plant Encyclopedia', icon: Leaf, requiresAuth: false },
   { href: '/almanac', label: 'Almanac', icon: BookOpen, requiresAuth: true, requiresPaid: true },
   { href: '/settings', label: 'Settings', icon: Settings, requiresAuth: true },
 ]

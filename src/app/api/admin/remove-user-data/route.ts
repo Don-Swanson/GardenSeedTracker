@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { createAuditLog, getRequestMetadata } from '@/lib/audit'
 
 // Types of data that can be removed
 type DataType = 'plantings' | 'seeds' | 'wishlist' | 'images' | 'locations' | 'pro-data' | 'all'
@@ -136,12 +137,23 @@ export async function POST(request: Request) {
       deletedCounts['plantRequests'] = requests.count
     }
 
-    // Log the action
-    console.log(
-      `[ADMIN ACTION] Data removed for user ${targetUser.email} by ${adminUser.email}. ` +
-      `Types: ${dataTypes.join(', ')}. Reason: ${reason}. ` +
-      `Counts: ${JSON.stringify(deletedCounts)}`
-    )
+    // Create audit log entry
+    const { ipAddress, userAgent } = getRequestMetadata(request)
+    await createAuditLog({
+      adminId: session.user.id,
+      adminEmail: adminUser.email!,
+      action: 'delete_user_data',
+      targetType: 'user',
+      targetId: targetUser.id,
+      targetEmail: targetUser.email,
+      reason,
+      details: {
+        dataTypes,
+        deletedCounts,
+      },
+      ipAddress,
+      userAgent,
+    })
 
     return NextResponse.json({
       message: `Successfully removed data for ${targetUser.email}`,

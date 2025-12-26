@@ -1,7 +1,7 @@
 import { withAuth } from 'next-auth/middleware'
 import { NextResponse } from 'next/server'
 
-// Routes that require authentication
+// Routes that require authentication (pages)
 const protectedRoutes = [
   '/seeds',
   '/plantings',
@@ -9,6 +9,21 @@ const protectedRoutes = [
   '/wishlist',
   '/almanac',
   '/settings',
+]
+
+// API routes that require authentication
+const protectedApiRoutes = [
+  '/api/seeds',
+  '/api/plantings',
+  '/api/wishlist',
+  '/api/settings',
+  '/api/subscription',
+  '/api/square/checkout',
+]
+
+// API routes that require admin role
+const adminApiRoutes = [
+  '/api/admin',
 ]
 
 // Routes that require a paid subscription
@@ -23,7 +38,18 @@ export default withAuth(
     const { pathname } = req.nextUrl
     const token = req.nextauth.token
 
-    // Check if the route requires paid subscription
+    // Check if it's an admin API route
+    const isAdminRoute = adminApiRoutes.some((route) => pathname.startsWith(route))
+    if (isAdminRoute) {
+      if (!token || token.role !== 'admin') {
+        return NextResponse.json(
+          { error: 'Admin access required' },
+          { status: 403 }
+        )
+      }
+    }
+
+    // Check if the route requires paid subscription (pages only)
     const requiresPaid = paidRoutes.some((route) => pathname.startsWith(route))
 
     if (requiresPaid && !token?.isPaid) {
@@ -40,11 +66,17 @@ export default withAuth(
       authorized: ({ token, req }) => {
         const { pathname } = req.nextUrl
 
-        // Check if path requires authentication
-        const isProtected = protectedRoutes.some((route) => pathname.startsWith(route))
+        // Check if path requires authentication (pages)
+        const isProtectedPage = protectedRoutes.some((route) => pathname.startsWith(route))
+        
+        // Check if path requires authentication (API)
+        const isProtectedApi = protectedApiRoutes.some((route) => pathname.startsWith(route))
+        
+        // Check if it's an admin route
+        const isAdminRoute = adminApiRoutes.some((route) => pathname.startsWith(route))
 
         // If protected route and no token, not authorized
-        if (isProtected && !token) {
+        if ((isProtectedPage || isProtectedApi || isAdminRoute) && !token) {
           return false
         }
 
@@ -59,11 +91,20 @@ export default withAuth(
 
 export const config = {
   matcher: [
+    // Protected pages
     '/seeds/:path*',
     '/plantings/:path*',
     '/calendar/:path*',
     '/wishlist/:path*',
     '/almanac/:path*',
     '/settings/:path*',
+    // Protected API routes
+    '/api/seeds/:path*',
+    '/api/plantings/:path*',
+    '/api/wishlist/:path*',
+    '/api/settings/:path*',
+    '/api/subscription/:path*',
+    '/api/square/checkout',
+    '/api/admin/:path*',
   ],
 }

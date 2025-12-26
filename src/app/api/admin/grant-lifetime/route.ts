@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { createAuditLog, getRequestMetadata } from '@/lib/audit'
 
 // Admin-only endpoint to grant lifetime membership
 // POST /api/admin/grant-lifetime
@@ -38,7 +39,14 @@ export async function POST(request: Request) {
     // Find the user to grant lifetime membership
     const targetUser = await prisma.user.findFirst({
       where: userId ? { id: userId } : { email: userEmail },
-      select: { id: true, email: true, name: true, isLifetimeMember: true },
+      select: { 
+        id: true, 
+        email: true, 
+        name: true, 
+        isLifetimeMember: true,
+        isPaid: true,
+        subscriptionStatus: true,
+      },
     })
 
     if (!targetUser) {
@@ -53,6 +61,13 @@ export async function POST(request: Request) {
         { error: 'User is already a lifetime member' },
         { status: 400 }
       )
+    }
+
+    // Store previous state for audit log
+    const previousState = {
+      isLifetimeMember: targetUser.isLifetimeMember,
+      isPaid: targetUser.isPaid,
+      subscriptionStatus: targetUser.subscriptionStatus,
     }
 
     // Grant lifetime membership
@@ -70,9 +85,25 @@ export async function POST(request: Request) {
       },
     })
 
-    console.log(
-      `Lifetime membership granted to ${targetUser.email} by ${adminUser.email}. Reason: ${reason || 'Not specified'}`
-    )
+    // Create audit log entry
+    const { ipAddress, userAgent } = getRequestMetadata(request)
+    await createAuditLog({
+      adminId: session.user.id,
+      adminEmail: adminUser.email!,
+      action: 'grant_lifetime',
+      targetType: 'user',
+      targetId: targetUser.id,
+      targetEmail: targetUser.email,
+      reason: reason || 'Not specified',
+      previousState,
+      newState: {
+        isLifetimeMember: true,
+        isPaid: true,
+        subscriptionStatus: 'lifetime',
+      },
+      ipAddress,
+      userAgent,
+    })
 
     return NextResponse.json({
       message: `Lifetime membership granted to ${targetUser.email}`,
@@ -125,7 +156,14 @@ export async function DELETE(request: Request) {
     // Find the user
     const targetUser = await prisma.user.findFirst({
       where: userId ? { id: userId } : { email: userEmail },
-      select: { id: true, email: true, name: true, isLifetimeMember: true },
+      select: { 
+        id: true, 
+        email: true, 
+        name: true, 
+        isLifetimeMember: true,
+        isPaid: true,
+        subscriptionStatus: true,
+      },
     })
 
     if (!targetUser) {
@@ -142,6 +180,13 @@ export async function DELETE(request: Request) {
       )
     }
 
+    // Store previous state for audit log
+    const previousState = {
+      isLifetimeMember: targetUser.isLifetimeMember,
+      isPaid: targetUser.isPaid,
+      subscriptionStatus: targetUser.subscriptionStatus,
+    }
+
     // Revoke lifetime membership
     await prisma.user.update({
       where: { id: targetUser.id },
@@ -154,9 +199,25 @@ export async function DELETE(request: Request) {
       },
     })
 
-    console.log(
-      `Lifetime membership revoked from ${targetUser.email} by ${adminUser.email}. Reason: ${reason || 'Not specified'}`
-    )
+    // Create audit log entry
+    const { ipAddress, userAgent } = getRequestMetadata(request)
+    await createAuditLog({
+      adminId: session.user.id,
+      adminEmail: adminUser.email!,
+      action: 'revoke_lifetime',
+      targetType: 'user',
+      targetId: targetUser.id,
+      targetEmail: targetUser.email,
+      reason: reason || 'Not specified',
+      previousState,
+      newState: {
+        isLifetimeMember: false,
+        isPaid: false,
+        subscriptionStatus: 'expired',
+      },
+      ipAddress,
+      userAgent,
+    })
 
     return NextResponse.json({
       message: `Lifetime membership revoked from ${targetUser.email}`,

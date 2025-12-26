@@ -17,11 +17,17 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 // POST /api/cron/renewal-reminders
 export async function POST(request: Request) {
   try {
-    // Verify cron secret for security
+    // Verify cron secret for security - REQUIRED
     const authHeader = request.headers.get('authorization')
     const cronSecret = process.env.CRON_SECRET
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // SECURITY: Cron secret is required - reject if not configured
+    if (!cronSecret) {
+      console.error('SECURITY ERROR: CRON_SECRET environment variable is not set')
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+
+    if (authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

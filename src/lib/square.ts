@@ -1,12 +1,20 @@
 import { Client, Environment } from 'square'
 
-if (!process.env.SQUARE_ACCESS_TOKEN) {
-  console.warn('Warning: SQUARE_ACCESS_TOKEN is not set')
+// SECURITY: Validate Square credentials are present
+const SQUARE_ACCESS_TOKEN = process.env.SQUARE_ACCESS_TOKEN
+const IS_PRODUCTION = process.env.NODE_ENV === 'production'
+
+if (!SQUARE_ACCESS_TOKEN && IS_PRODUCTION) {
+  throw new Error('SECURITY ERROR: SQUARE_ACCESS_TOKEN is required in production')
+}
+
+if (!SQUARE_ACCESS_TOKEN) {
+  console.warn('Warning: SQUARE_ACCESS_TOKEN is not set - payment features will not work')
 }
 
 export const squareClient = new Client({
-  accessToken: process.env.SQUARE_ACCESS_TOKEN || '',
-  environment: process.env.NODE_ENV === 'production' 
+  accessToken: SQUARE_ACCESS_TOKEN || 'sandbox-placeholder-token',
+  environment: IS_PRODUCTION
     ? Environment.Production 
     : Environment.Sandbox,
 })

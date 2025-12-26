@@ -15,14 +15,18 @@ async function sendVerificationRequest({
   url: string
   provider: { from: string }
 }) {
+  const IS_PRODUCTION = process.env.NODE_ENV === 'production'
+  
   // In production, use a real email service (SendGrid, Resend, AWS SES, etc.)
-  // For development, log the magic link to console
-  console.log('━'.repeat(60))
-  console.log('🔐 MAGIC LINK LOGIN')
-  console.log('━'.repeat(60))
-  console.log(`Email: ${email}`)
-  console.log(`Click to sign in: ${url}`)
-  console.log('━'.repeat(60))
+  // SECURITY: Only log magic links in development, never in production
+  if (!IS_PRODUCTION) {
+    console.log('━'.repeat(60))
+    console.log('🔐 MAGIC LINK LOGIN (DEV ONLY)')
+    console.log('━'.repeat(60))
+    console.log(`Email: ${email}`)
+    console.log(`Click to sign in: ${url}`)
+    console.log('━'.repeat(60))
+  }
   
   // Example SendGrid implementation:
   // const sgMail = require('@sendgrid/mail')

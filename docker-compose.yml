@@ -1,0 +1,68 @@
+# GardenSeedTracker Docker Compose Configuration
+# 
+# Usage:
+#   Development: docker-compose up
+#   Production:  docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Environment variables should be set in .env file or passed via command line
+
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: garden-seed-tracker
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      # Database
+      - DATABASE_URL=file:/app/data/garden.db
+      
+      # NextAuth Configuration
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
+      
+      # Email Configuration (for magic links)
+      - EMAIL_SERVER_HOST=${EMAIL_SERVER_HOST:-}
+      - EMAIL_SERVER_PORT=${EMAIL_SERVER_PORT:-587}
+      - EMAIL_SERVER_USER=${EMAIL_SERVER_USER:-}
+      - EMAIL_SERVER_PASSWORD=${EMAIL_SERVER_PASSWORD:-}
+      - EMAIL_FROM=${EMAIL_FROM:-noreply@gardenseedtracker.com}
+      
+      # Square Payment Configuration
+      - SQUARE_ACCESS_TOKEN=${SQUARE_ACCESS_TOKEN:-}
+      - SQUARE_LOCATION_ID=${SQUARE_LOCATION_ID:-}
+      - SQUARE_APP_ID=${SQUARE_APP_ID:-}
+      - SQUARE_WEBHOOK_SIGNATURE_KEY=${SQUARE_WEBHOOK_SIGNATURE_KEY:-}
+      
+      # Cron Security
+      - CRON_SECRET=${CRON_SECRET:-}
+      
+      # Optional: Resend for emails
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      
+      # Optional: Google OAuth
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+    volumes:
+      # Persist SQLite database
+      - garden_data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - garden_network
+
+volumes:
+  garden_data:
+    driver: local
+
+networks:
+  garden_network:
+    driver: bridge

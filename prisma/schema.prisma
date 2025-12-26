@@ -1,0 +1,337 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== AUTHENTICATION ====================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String?   // Legacy - not used with magic link auth
+  name          String?
+  image         String?
+  role          String    @default("user") // "user", "admin"
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Subscription info
+  isPaid              Boolean   @default(false)
+  subscriptionStatus  String    @default("free") // "free", "trial", "active", "expired", "cancelled", "canceling", "lifetime"
+  subscriptionEndDate DateTime?
+  subscriptionTier    Int?                       // Annual amount in dollars (5, 10, 15, 20, 25, 50)
+  autoRenew           Boolean   @default(true)   // Whether subscription auto-renews
+  renewalReminderSent Boolean   @default(false)  // Track if reminder was sent
+  isLifetimeMember    Boolean   @default(false)  // Lifetime members never expire
+  lifetimeGrantedAt   DateTime?                  // When lifetime was granted
+  lifetimeGrantedBy   String?                    // Admin who granted it
+  
+  // Trial info
+  trialStartDate      DateTime?                  // When trial started
+  trialEndDate        DateTime?                  // When trial ends (7 days from start)
+  trialUsed           Boolean   @default(false)  // Has user used their trial?
+  
+  // Payment info (Square handles all payment data securely)
+  squareCustomerId     String?   @unique         // Reference to Square customer
+  squareSubscriptionId String?                   // Square subscription ID for recurring billing
+  squareCardId         String?                   // Square card-on-file ID for auto-renewal
+  lastPaymentAmount    Float?                    // Amount of last payment
+  lastPaymentDate      DateTime?
+  
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  seeds         Seed[]
+  plantings     Planting[]
+  wishlistItems WishlistItem[]
+  gardenLocations GardenLocation[]
+  settings      UserSettings?
+  plantRequests PlantRequest[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ==================== SEED INVENTORY ====================
+
+model Seed {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  nickname        String?  // User's custom name, e.g., "Grandma's tomatoes"
+  variety         String?  // e.g., "Roma", "Cherokee Purple"
+  brand           String?  // e.g., "Burpee", "Baker Creek"
+  quantity        Int      @default(1)
+  quantityUnit    String   @default("seeds") // "seeds", "packets", "grams"
+  purchaseDate    DateTime?
+  expirationDate  DateTime?
+  
+  // Override values from plant type
+  daysToGerminate Int?
+  daysToMaturity  Int?
+  sunRequirement  String?
+  waterNeeds      String?
+  spacing         String?
+  plantingDepth   String?
+  
+  notes           String?
+  imageUrl        String?
+  lotNumber       String?
+  source          String?
+  
+  // Link to plant type database
+  plantTypeId     String?
+  plantType       PlantingGuide? @relation(fields: [plantTypeId], references: [id])
+  
+  // For custom plant types not in database
+  customPlantName String?
+  customCategory  String?
+  
+  isArchived      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  plantings       Planting[]
+  
+  @@index([userId])
+}
+
+// ==================== PLANTING LOG ====================
+
+model Planting {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seedId          String
+  seed            Seed     @relation(fields: [seedId], references: [id], onDelete: Cascade)
+  
+  // Main location for this planting group
+  locationId      String?
+  location        GardenLocation? @relation(fields: [locationId], references: [id])
+  locationName    String   // Fallback text location
+  quantityPlanted Int      @default(1)
+  harvestDate     DateTime?
+  actualYield     String?
+  status          String   @default("planted") // planted, germinated, growing, harvested, failed
+  notes           String?  // General notes for this planting
+  
+  // Multiple planting events (dates) for this planting
+  plantingEvents  PlantingEvent[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+// Individual planting event/date for a Planting
+model PlantingEvent {
+  id          String   @id @default(cuid())
+  plantingId  String
+  planting    Planting @relation(fields: [plantingId], references: [id], onDelete: Cascade)
+  
+  date        DateTime
+  quantity    Int?     // Optional quantity for this specific planting event
+  method      String?  // "direct sow", "transplant", "indoor start", etc.
+  notes       String?  // Notes specific to this planting date
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([plantingId])
+}
+
+// ==================== WISHLIST ====================
+
+model WishlistItem {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  plantTypeId    String?
+  plantType      PlantingGuide? @relation(fields: [plantTypeId], references: [id])
+  customPlantName String?
+  
+  variety        String?
+  brand          String?
+  estimatedPrice Float?
+  priority       Int      @default(3)
+  sourceUrl      String?
+  notes          String?
+  purchased      Boolean  @default(false)
+  purchasedDate  DateTime?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+// ==================== GARDEN LOCATIONS ====================
+
+model GardenLocation {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  sunExposure String?
+  soilType    String?
+  size        String?
+  notes       String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  plantings   Planting[]
+  
+  @@index([userId])
+}
+
+// ==================== USER SETTINGS ====================
+
+model UserSettings {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  zipCode         String?
+  hardinessZone   String?
+  lastFrostDate   DateTime?
+  firstFrostDate  DateTime?
+  latitude        Float?
+  longitude       Float?
+  
+  // Notification preferences
+  emailNotifications Boolean @default(true)
+  plantingReminders  Boolean @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ==================== PLANT DATABASE ====================
+
+model PlantingGuide {
+  id                    String   @id @default(cuid())
+  name                  String   @unique
+  category              String
+  subcategory           String?
+  scientificName        String?
+  description           String?
+  
+  // Timing
+  indoorStartWeeks      Int?
+  outdoorStartWeeks     Int?
+  transplantWeeks       Int?
+  harvestWeeks          Int?
+  daysToGerminate       Int?
+  daysToMaturity        Int?
+  
+  // Growing conditions
+  minGerminationTemp    Int?
+  optGerminationTemp    Int?
+  minGrowingTemp        Int?
+  maxGrowingTemp        Int?
+  sunRequirement        String?
+  waterNeeds            String?
+  soilPH                String?
+  
+  // Planting info
+  spacing               String?
+  plantingDepth         String?
+  rowSpacing            String?
+  plantsPerSquareFoot   Float?
+  
+  // Companion planting
+  companionPlants       String?
+  avoidPlants           String?
+  
+  // Pests & diseases
+  commonPests           String?
+  commonDiseases        String?
+  organicPestControl    String?
+  
+  // Harvest & storage
+  harvestTips           String?
+  storageTips           String?
+  preservationMethods   String?
+  
+  notes                 String?
+  imageUrl              String?
+  
+  // Admin flags
+  isUserSubmitted       Boolean  @default(false)
+  isApproved            Boolean  @default(true)
+  submittedById         String?
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  seeds                 Seed[]
+  wishlistItems         WishlistItem[]
+}
+
+// ==================== FEATURE REQUESTS ====================
+
+model PlantRequest {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  plantName       String
+  category        String?
+  scientificName  String?
+  description     String?
+  reason          String?
+  additionalInfo  String?
+  
+  status          String   @default("pending") // "pending", "reviewing", "approved", "rejected", "added"
+  adminNotes      String?
+  votes           Int      @default(1)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+}

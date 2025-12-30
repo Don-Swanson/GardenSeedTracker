@@ -60,7 +60,8 @@ export async function PUT(
     const item = await prisma.wishlistItem.update({
       where: { id },
       data: {
-        name: data.name,
+        customPlantName: data.name || data.customPlantName,
+        plantTypeId: data.plantTypeId,
         variety: data.variety,
         brand: data.brand,
         estimatedPrice: data.estimatedPrice,

@@ -681,18 +681,6 @@ async function main() {
     console.log(`Created planting guide: ${result.name}`)
   }
   
-  // Create default user settings
-  const existingSettings = await prisma.userSettings.findFirst()
-  if (!existingSettings) {
-    await prisma.userSettings.create({
-      data: {
-        hardinessZone: '7a',
-        zipCode: '22201',
-      },
-    })
-    console.log('Created default user settings')
-  }
-  
   console.log('Seeding finished.')
 }
 

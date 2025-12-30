@@ -69,7 +69,7 @@ interface Plant {
   cautions?: string
   
   // Craft ideas
-  craftIdeas?: string[] | string
+  craftIdeas?: CraftIdea[] | string
   
   // Historical
   history?: string
@@ -279,7 +279,7 @@ export default function PlantDetailPage() {
     return (
       <div className="text-center py-12">
         <Leaf className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900">Plant not found</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Plant not found</h3>
         <Link href="/plants" className="text-garden-600 hover:text-garden-700 mt-2 inline-block">
           ← Back to plants
         </Link>
@@ -305,7 +305,7 @@ export default function PlantDetailPage() {
         
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{plant.name}</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{plant.name}</h1>
             {plant.scientificName && (
               <p className="text-lg text-gray-500 italic">{plant.scientificName}</p>
             )}
@@ -344,31 +344,31 @@ export default function PlantDetailPage() {
       {/* Quick info cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {plant.sunRequirement && (
-          <div className="card bg-yellow-50 border-yellow-200">
+          <div className="card bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-700">
             <Sun className="w-6 h-6 text-yellow-600 mb-2" />
             <p className="text-xs text-yellow-700 font-medium">Sun</p>
             <p className="text-sm text-yellow-900 capitalize">{plant.sunRequirement}</p>
           </div>
         )}
         {plant.waterNeeds && (
-          <div className="card bg-blue-50 border-blue-200">
+          <div className="card bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700">
             <Droplets className="w-6 h-6 text-blue-600 mb-2" />
             <p className="text-xs text-blue-700 font-medium">Water</p>
             <p className="text-sm text-blue-900 capitalize">{plant.waterNeeds}</p>
           </div>
         )}
         {plant.daysToMaturity && (
-          <div className="card bg-green-50 border-green-200">
+          <div className="card bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700">
             <Calendar className="w-6 h-6 text-green-600 mb-2" />
             <p className="text-xs text-green-700 font-medium">Days to Harvest</p>
-            <p className="text-sm text-green-900">{plant.daysToMaturity} days</p>
+            <p className="text-sm text-green-900 dark:text-green-100">{plant.daysToMaturity} days</p>
           </div>
         )}
         {(optimalZones.length > 0 || hardinessZones.length > 0) && (
-          <div className="card bg-purple-50 border-purple-200">
+          <div className="card bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700">
             <MapPin className="w-6 h-6 text-purple-600 mb-2" />
             <p className="text-xs text-purple-700 font-medium">Best Zones</p>
-            <p className="text-sm text-purple-900">
+            <p className="text-sm text-purple-900 dark:text-purple-100">
               {optimalZones.length > 0 ? optimalZones.slice(0, 3).join(', ') : hardinessZones.slice(0, 3).join(', ')}
               {(optimalZones.length > 3 || hardinessZones.length > 3) && '...'}
             </p>
@@ -383,15 +383,15 @@ export default function PlantDetailPage() {
           {/* Description */}
           {(plant.description || plant.generalInfo) && (
             <div className="card">
-              <h2 className="text-xl font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-garden-600" />
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-garden-600 dark:text-garden-400" />
                 About {plant.name}
               </h2>
               {plant.description && (
                 <p className="text-gray-700 mb-4">{plant.description}</p>
               )}
               {plant.generalInfo && (
-                <p className="text-gray-600">{plant.generalInfo}</p>
+                <p className="text-gray-600 dark:text-gray-300">{plant.generalInfo}</p>
               )}
             </div>
           )}
@@ -399,13 +399,13 @@ export default function PlantDetailPage() {
           {/* Fun Facts */}
           {funFacts.length > 0 && (
             <div className="card">
-              <h2 className="text-xl font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 <Lightbulb className="w-5 h-5 text-yellow-500" />
                 Fun Facts
               </h2>
               <ul className="space-y-2">
                 {funFacts.map((fact, index) => (
-                  <li key={index} className="flex items-start gap-2 text-gray-700">
+                  <li key={index} className="flex items-start gap-2 text-gray-700 dark:text-gray-300">
                     <Sparkles className="w-4 h-4 text-yellow-500 mt-1 flex-shrink-0" />
                     {fact}
                   </li>
@@ -417,13 +417,13 @@ export default function PlantDetailPage() {
           {/* Hardiness Zones */}
           {hardinessZones.length > 0 && (
             <div className="card">
-              <h2 className="text-xl font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-purple-600" />
                 Growing Zones
               </h2>
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">Compatible Zones:</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Compatible Zones:</p>
                   <div className="flex flex-wrap gap-2">
                     {hardinessZones.map(zone => (
                       <span 
@@ -441,12 +441,12 @@ export default function PlantDetailPage() {
                   </div>
                 </div>
                 {optimalZones.length > 0 && (
-                  <p className="text-sm text-green-700">
+                  <p className="text-sm text-green-700 dark:text-green-300">
                     ★ = Optimal zones for best growth
                   </p>
                 )}
                 {plant.zoneNotes && (
-                  <p className="text-sm text-gray-600 mt-2">{plant.zoneNotes}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{plant.zoneNotes}</p>
                 )}
               </div>
             </div>
@@ -455,14 +455,14 @@ export default function PlantDetailPage() {
           {/* Variations */}
           {variations.length > 0 && (
             <div className="card">
-              <h2 className="text-xl font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 <Leaf className="w-5 h-5 text-green-600" />
                 Popular Varieties
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {variations.map((variety, index) => (
-                  <div key={index} className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-gray-800">{variety}</p>
+                  <div key={index} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                    <p className="text-gray-800 dark:text-gray-200">{variety}</p>
                   </div>
                 ))}
               </div>
@@ -473,10 +473,10 @@ export default function PlantDetailPage() {
           <div className="card">
             <button
               onClick={() => toggleSection('culinary')}
-              className="w-full flex items-center justify-between text-xl font-semibold text-gray-900 mb-3"
+              className="w-full flex items-center justify-between text-xl font-semibold text-gray-900 dark:text-white mb-3"
             >
               <span className="flex items-center gap-2">
-                <Utensils className="w-5 h-5 text-orange-600" />
+                <Utensils className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                 Culinary Uses
               </span>
               {expandedSections.culinary ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
@@ -486,40 +486,40 @@ export default function PlantDetailPage() {
               <div className="space-y-4">
                 {plant.flavorProfile && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Flavor Profile:</p>
-                    <p className="text-gray-600">{plant.flavorProfile}</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Flavor Profile:</p>
+                    <p className="text-gray-600 dark:text-gray-300">{plant.flavorProfile}</p>
                   </div>
                 )}
                 
                 {plant.culinaryUses && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700">How to Use:</p>
-                    <p className="text-gray-600">{plant.culinaryUses}</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">How to Use:</p>
+                    <p className="text-gray-600 dark:text-gray-300">{plant.culinaryUses}</p>
                   </div>
                 )}
                 
                 {plant.nutritionalInfo && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Nutritional Benefits:</p>
-                    <p className="text-gray-600">{plant.nutritionalInfo}</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Nutritional Benefits:</p>
+                    <p className="text-gray-600 dark:text-gray-300">{plant.nutritionalInfo}</p>
                   </div>
                 )}
 
                 {recipes.length > 0 && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Recipes:</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Recipes:</p>
                     <div className="space-y-3">
                       {recipes.map((recipe, index) => (
-                        <div key={index} className="bg-orange-50 rounded-lg p-4 border border-orange-100">
-                          <h4 className="font-semibold text-orange-900">{recipe.name}</h4>
-                          <p className="text-sm text-orange-800 mt-1">{recipe.description}</p>
+                        <div key={index} className="bg-orange-50 dark:bg-orange-900/40 rounded-lg p-4 border border-orange-100 dark:border-orange-800">
+                          <h4 className="font-semibold text-orange-900 dark:text-orange-100">{recipe.name}</h4>
+                          <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">{recipe.description}</p>
                           {recipe.prepTime && (
-                            <p className="text-xs text-orange-600 mt-2">⏱️ {recipe.prepTime}</p>
+                            <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">⏱️ {recipe.prepTime}</p>
                           )}
                           {recipe.ingredients && recipe.ingredients.length > 0 && (
                             <div className="mt-2">
-                              <p className="text-xs font-medium text-orange-700">Ingredients:</p>
-                              <ul className="text-xs text-orange-800 list-disc list-inside">
+                              <p className="text-xs font-medium text-orange-700 dark:text-orange-300">Ingredients:</p>
+                              <ul className="text-xs text-orange-800 dark:text-orange-200 list-disc list-inside">
                                 {recipe.ingredients.map((ing, i) => (
                                   <li key={i}>{ing}</li>
                                 ))}
@@ -527,7 +527,7 @@ export default function PlantDetailPage() {
                             </div>
                           )}
                           {recipe.source && (
-                            <p className="text-xs text-orange-500 mt-2">Source: {recipe.source}</p>
+                            <p className="text-xs text-orange-500 dark:text-orange-400 mt-2">Source: {recipe.source}</p>
                           )}
                         </div>
                       ))}
@@ -557,7 +557,7 @@ export default function PlantDetailPage() {
           <div className="card">
             <button
               onClick={() => toggleSection('crafts')}
-              className="w-full flex items-center justify-between text-xl font-semibold text-gray-900 mb-3"
+              className="w-full flex items-center justify-between text-xl font-semibold text-gray-900 dark:text-white mb-3"
             >
               <span className="flex items-center gap-2">
                 <Scissors className="w-5 h-5 text-purple-600" />
@@ -571,20 +571,20 @@ export default function PlantDetailPage() {
                 {craftIdeas.length > 0 ? (
                   <div className="space-y-3">
                     {craftIdeas.map((craft, index) => (
-                      <div key={index} className="bg-purple-50 rounded-lg p-4 border border-purple-100">
+                      <div key={index} className="bg-purple-50 dark:bg-purple-900/40 rounded-lg p-4 border border-purple-100 dark:border-purple-800">
                         <div className="flex items-start justify-between">
-                          <h4 className="font-semibold text-purple-900">{craft.name}</h4>
+                          <h4 className="font-semibold text-purple-900 dark:text-purple-100">{craft.name}</h4>
                           {craft.difficulty && (
-                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                            <span className="text-xs bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-200 px-2 py-1 rounded">
                               {craft.difficulty}
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-purple-800 mt-1">{craft.description}</p>
+                        <p className="text-sm text-purple-800 dark:text-purple-200 mt-1">{craft.description}</p>
                         {craft.materials && craft.materials.length > 0 && (
                           <div className="mt-2">
-                            <p className="text-xs font-medium text-purple-700">Materials needed:</p>
-                            <ul className="text-xs text-purple-800 list-disc list-inside">
+                            <p className="text-xs font-medium text-purple-700 dark:text-purple-300">Materials needed:</p>
+                            <ul className="text-xs text-purple-800 dark:text-purple-200 list-disc list-inside">
                               {craft.materials.map((material, i) => (
                                 <li key={i}>{material}</li>
                               ))}
@@ -596,7 +596,7 @@ export default function PlantDetailPage() {
                             href={craft.link} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 mt-2"
+                            className="inline-flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 mt-2"
                           >
                             View tutorial <ExternalLink className="w-3 h-3" />
                           </a>
@@ -619,9 +619,9 @@ export default function PlantDetailPage() {
                   </p>
                 )}
                 
-                <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-                  <p className="font-medium mb-1">💡 Craft ideas might include:</p>
-                  <ul className="text-xs space-y-1 text-gray-500">
+                <div className="text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                  <p className="font-medium mb-1 text-gray-700 dark:text-gray-200">�� Craft ideas might include:</p>
+                  <ul className="text-xs space-y-1 text-gray-500 dark:text-gray-400 dark:text-gray-500">
                     <li>• Natural dyes from leaves, petals, or fruits</li>
                     <li>• Dried flower arrangements and potpourri</li>
                     <li>• Homemade beauty products (soaps, balms, scrubs)</li>
@@ -638,7 +638,7 @@ export default function PlantDetailPage() {
           <div className="card">
             <button
               onClick={() => toggleSection('medicinal')}
-              className="w-full flex items-center justify-between text-xl font-semibold text-gray-900 mb-3"
+              className="w-full flex items-center justify-between text-xl font-semibold text-gray-900 dark:text-white mb-3"
             >
               <span className="flex items-center gap-2">
                 <Heart className="w-5 h-5 text-red-500" />
@@ -650,17 +650,17 @@ export default function PlantDetailPage() {
             {expandedSections.medicinal && (
               <div className="space-y-4">
                 {/* Medicinal Disclaimer */}
-                <div className="bg-amber-50 border border-amber-300 rounded-lg p-4">
+                <div className="bg-amber-50 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-semibold text-amber-900">Important Disclaimer</p>
-                      <p className="text-sm text-amber-800 mt-1">
+                      <p className="font-semibold text-amber-900 dark:text-amber-100">Important Disclaimer</p>
+                      <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">
                         The information provided here is for <strong>educational and informational purposes only</strong> and 
                         is not intended as medical advice. It should not be used to diagnose, treat, cure, or prevent 
                         any disease or health condition.
                       </p>
-                      <p className="text-sm text-amber-800 mt-2">
+                      <p className="text-sm text-amber-800 dark:text-amber-200 mt-2">
                         <strong>Always consult a qualified healthcare professional</strong> before using any plant 
                         medicinally, especially if you are pregnant, nursing, taking medications, or have a health condition.
                       </p>
@@ -670,25 +670,25 @@ export default function PlantDetailPage() {
                 
                 {plant.medicinalUses && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Traditional & Modern Medicinal Uses:</p>
-                    <p className="text-gray-600">{plant.medicinalUses}</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Traditional & Modern Medicinal Uses:</p>
+                    <p className="text-gray-600 dark:text-gray-300">{plant.medicinalUses}</p>
                   </div>
                 )}
                 
                 {plant.holisticUses && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Holistic Applications:</p>
-                    <p className="text-gray-600">{plant.holisticUses}</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Holistic Applications:</p>
+                    <p className="text-gray-600 dark:text-gray-300">{plant.holisticUses}</p>
                   </div>
                 )}
 
                 {plant.cautions && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                    <p className="text-sm font-medium text-red-800 flex items-center gap-2">
+                  <div className="bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-700 rounded-lg p-3">
+                    <p className="text-sm font-medium text-red-800 dark:text-red-200 flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4" />
                       Cautions & Warnings
                     </p>
-                    <p className="text-sm text-red-700 mt-1">{plant.cautions}</p>
+                    <p className="text-sm text-red-700 dark:text-red-300 mt-1">{plant.cautions}</p>
                   </div>
                 )}
 
@@ -707,7 +707,7 @@ export default function PlantDetailPage() {
                   </p>
                 )}
 
-                <p className="text-xs text-gray-500 italic border-t pt-3">
+                <p className="text-xs text-gray-500 dark:text-gray-400 italic border-t dark:border-gray-700 pt-3">
                   <strong>Disclaimer:</strong> Garden Seed Tracker does not endorse or recommend any specific 
                   medicinal use of plants. Information presented is gathered from traditional uses and should 
                   not replace professional medical advice. Individual results may vary and some plants may cause 
@@ -721,7 +721,7 @@ export default function PlantDetailPage() {
           <div className="card">
             <button
               onClick={() => toggleSection('history')}
-              className="w-full flex items-center justify-between text-xl font-semibold text-gray-900 mb-3"
+              className="w-full flex items-center justify-between text-xl font-semibold text-gray-900 dark:text-white mb-3"
             >
               <span className="flex items-center gap-2">
                 <History className="w-5 h-5 text-amber-600" />
@@ -734,15 +734,15 @@ export default function PlantDetailPage() {
               <div className="space-y-4">
                 {plant.history && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Origins & History:</p>
-                    <p className="text-gray-600">{plant.history}</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Origins & History:</p>
+                    <p className="text-gray-600 dark:text-gray-300">{plant.history}</p>
                   </div>
                 )}
                 
                 {plant.culturalSignificance && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700">Cultural Significance:</p>
-                    <p className="text-gray-600">{plant.culturalSignificance}</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Cultural Significance:</p>
+                    <p className="text-gray-600 dark:text-gray-300">{plant.culturalSignificance}</p>
                   </div>
                 )}
 
@@ -769,54 +769,54 @@ export default function PlantDetailPage() {
         <div className="space-y-6">
           {/* Growing Guide */}
           <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Leaf className="w-5 h-5 text-garden-600" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <Leaf className="w-5 h-5 text-garden-600 dark:text-garden-400" />
               Growing Guide
             </h2>
             
             <div className="space-y-3 text-sm">
               {plant.indoorStartWeeks && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Indoor Start:</span>
-                  <span className="font-medium">{plant.indoorStartWeeks} weeks before last frost</span>
+                  <span className="text-gray-600 dark:text-gray-300">Indoor Start:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{plant.indoorStartWeeks} weeks before last frost</span>
                 </div>
               )}
               {plant.outdoorStartWeeks && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Direct Sow:</span>
-                  <span className="font-medium">
+                  <span className="text-gray-600 dark:text-gray-300">Direct Sow:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
                     {plant.outdoorStartWeeks > 0 ? `${plant.outdoorStartWeeks} weeks after` : `${Math.abs(plant.outdoorStartWeeks)} weeks before`} last frost
                   </span>
                 </div>
               )}
               {plant.daysToGerminate && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Germination:</span>
-                  <span className="font-medium">{plant.daysToGerminate} days</span>
+                  <span className="text-gray-600 dark:text-gray-300">Germination:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{plant.daysToGerminate} days</span>
                 </div>
               )}
               {plant.spacing && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Spacing:</span>
-                  <span className="font-medium">{plant.spacing}</span>
+                  <span className="text-gray-600 dark:text-gray-300">Spacing:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{plant.spacing}</span>
                 </div>
               )}
               {plant.plantingDepth && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Depth:</span>
-                  <span className="font-medium">{plant.plantingDepth}</span>
+                  <span className="text-gray-600 dark:text-gray-300">Depth:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{plant.plantingDepth}</span>
                 </div>
               )}
               {plant.soilPH && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Soil pH:</span>
-                  <span className="font-medium">{plant.soilPH}</span>
+                  <span className="text-gray-600 dark:text-gray-300">Soil pH:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{plant.soilPH}</span>
                 </div>
               )}
               {plant.optGerminationTemp && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Ideal Germ Temp:</span>
-                  <span className="font-medium">{plant.optGerminationTemp}°F</span>
+                  <span className="text-gray-600 dark:text-gray-300">Ideal Germ Temp:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{plant.optGerminationTemp}°F</span>
                 </div>
               )}
             </div>
@@ -825,19 +825,19 @@ export default function PlantDetailPage() {
           {/* Companion Planting */}
           {(plant.companionPlants || plant.avoidPlants) && (
             <div className="card">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Companion Planting</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Companion Planting</h2>
               
               {plant.companionPlants && (
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-green-700 mb-2">✓ Good Companions:</p>
-                  <p className="text-sm text-gray-600">{plant.companionPlants}</p>
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-2">✓ Good Companions:</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{plant.companionPlants}</p>
                 </div>
               )}
               
               {plant.avoidPlants && (
                 <div>
-                  <p className="text-sm font-medium text-red-700 mb-2">✗ Avoid Planting With:</p>
-                  <p className="text-sm text-gray-600">{plant.avoidPlants}</p>
+                  <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-2">✗ Avoid Planting With:</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{plant.avoidPlants}</p>
                 </div>
               )}
             </div>
@@ -846,26 +846,26 @@ export default function PlantDetailPage() {
           {/* Pests & Problems */}
           {(plant.commonPests || plant.commonDiseases) && (
             <div className="card">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Pests & Diseases</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Pests & Diseases</h2>
               
               {plant.commonPests && (
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-gray-700 mb-1">Common Pests:</p>
-                  <p className="text-sm text-gray-600">{plant.commonPests}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Common Pests:</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{plant.commonPests}</p>
                 </div>
               )}
               
               {plant.commonDiseases && (
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-gray-700 mb-1">Common Diseases:</p>
-                  <p className="text-sm text-gray-600">{plant.commonDiseases}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Common Diseases:</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{plant.commonDiseases}</p>
                 </div>
               )}
               
               {plant.organicPestControl && (
                 <div>
-                  <p className="text-sm font-medium text-green-700 mb-1">Organic Control:</p>
-                  <p className="text-sm text-gray-600">{plant.organicPestControl}</p>
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-1">Organic Control:</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{plant.organicPestControl}</p>
                 </div>
               )}
             </div>
@@ -874,26 +874,26 @@ export default function PlantDetailPage() {
           {/* Harvest & Storage */}
           {(plant.harvestTips || plant.storageTips || plant.preservationMethods) && (
             <div className="card">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Harvest & Storage</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Harvest & Storage</h2>
               
               {plant.harvestTips && (
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-gray-700 mb-1">Harvesting:</p>
-                  <p className="text-sm text-gray-600">{plant.harvestTips}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Harvesting:</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{plant.harvestTips}</p>
                 </div>
               )}
               
               {plant.storageTips && (
                 <div className="mb-4">
-                  <p className="text-sm font-medium text-gray-700 mb-1">Storage:</p>
-                  <p className="text-sm text-gray-600">{plant.storageTips}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Storage:</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{plant.storageTips}</p>
                 </div>
               )}
               
               {plant.preservationMethods && (
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-1">Preservation:</p>
-                  <p className="text-sm text-gray-600">{plant.preservationMethods}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Preservation:</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{plant.preservationMethods}</p>
                 </div>
               )}
             </div>
@@ -901,9 +901,9 @@ export default function PlantDetailPage() {
 
           {/* Notes */}
           {plant.notes && (
-            <div className="card bg-garden-50 border-garden-200">
-              <h2 className="text-lg font-semibold text-garden-900 mb-2">Growing Tips</h2>
-              <p className="text-sm text-garden-800">{plant.notes}</p>
+            <div className="card bg-garden-50 dark:bg-garden-900/30 border-garden-200 dark:border-garden-700">
+              <h2 className="text-lg font-semibold text-garden-900 dark:text-garden-100 mb-2">Growing Tips</h2>
+              <p className="text-sm text-garden-800 dark:text-garden-200">{plant.notes}</p>
             </div>
           )}
         </div>
@@ -912,15 +912,15 @@ export default function PlantDetailPage() {
       {/* Suggestion Modal */}
       {showSuggestionModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                   Suggest an Update for {plant.name}
                 </h2>
                 <button
                   onClick={() => setShowSuggestionModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 dark:text-gray-300"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -929,8 +929,8 @@ export default function PlantDetailPage() {
               {submitSuccess ? (
                 <div className="text-center py-8">
                   <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900">Thank You!</h3>
-                  <p className="text-gray-600 mt-2">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Thank You!</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mt-2">
                     Your suggestion has been submitted for review.
                   </p>
                 </div>
@@ -938,13 +938,13 @@ export default function PlantDetailPage() {
                 <form onSubmit={handleSuggestionSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Section
                       </label>
                       <select
                         value={suggestionForm.section}
                         onChange={(e) => setSuggestionForm(f => ({ ...f, section: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-garden-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-garden-500"
                       >
                         {Object.entries(sectionLabels).map(([key, label]) => (
                           <option key={key} value={key}>{label}</option>
@@ -953,13 +953,13 @@ export default function PlantDetailPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Type
                       </label>
                       <select
                         value={suggestionForm.suggestionType}
                         onChange={(e) => setSuggestionForm(f => ({ ...f, suggestionType: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-garden-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-garden-500"
                       >
                         <option value="addition">Add new information</option>
                         <option value="correction">Correct existing info</option>
@@ -970,21 +970,21 @@ export default function PlantDetailPage() {
 
                   {suggestionForm.suggestionType === 'correction' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Current Content (what needs fixing)
                       </label>
                       <textarea
                         value={suggestionForm.currentContent}
                         onChange={(e) => setSuggestionForm(f => ({ ...f, currentContent: e.target.value }))}
                         rows={2}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-garden-500"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-garden-500"
                         placeholder="Paste the current text that needs correction..."
                       />
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Your Suggestion *
                     </label>
                     <textarea
@@ -992,20 +992,20 @@ export default function PlantDetailPage() {
                       onChange={(e) => setSuggestionForm(f => ({ ...f, suggestedContent: e.target.value }))}
                       rows={4}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-garden-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-garden-500"
                       placeholder="Enter your suggested content..."
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Source URL (optional)
                     </label>
                     <input
                       type="url"
                       value={suggestionForm.sourceUrl}
                       onChange={(e) => setSuggestionForm(f => ({ ...f, sourceUrl: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-garden-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-garden-500"
                       placeholder="https://example.com/source"
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -1014,14 +1014,14 @@ export default function PlantDetailPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Additional Notes (optional)
                     </label>
                     <textarea
                       value={suggestionForm.notes}
                       onChange={(e) => setSuggestionForm(f => ({ ...f, notes: e.target.value }))}
                       rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-garden-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-garden-500"
                       placeholder="Any additional context..."
                     />
                   </div>

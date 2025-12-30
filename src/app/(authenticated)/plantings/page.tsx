@@ -21,7 +21,7 @@ export default async function PlantingsPage({ searchParams }: PageProps) {
   const plantings = await prisma.planting.findMany({
     where,
     include: { 
-      seed: true,
+      seed: { include: { plantType: true } },
       plantingEvents: {
         orderBy: { date: 'desc' },
       },
@@ -107,7 +107,7 @@ export default async function PlantingsPage({ searchParams }: PageProps) {
                         href={`/seeds/${planting.seed.id}`}
                         className="font-semibold text-gray-900 hover:text-garden-600"
                       >
-                        {planting.seed.name}
+                        {planting.seed.plantType?.name || planting.seed.customPlantName || planting.seed.nickname || 'Unknown'}
                         {planting.seed.variety && ` (${planting.seed.variety})`}
                       </Link>
                       <p className="text-sm text-gray-500 mt-1">

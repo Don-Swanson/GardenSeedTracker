@@ -3,7 +3,7 @@
 
 # ==================== Dependencies Stage ====================
 FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat openssl openssl-dev
 WORKDIR /app
 
 # Copy package files
@@ -14,6 +14,8 @@ RUN npm ci
 
 # ==================== Builder Stage ====================
 FROM node:20-alpine AS builder
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl openssl-dev libc6-compat
 WORKDIR /app
 
 # Copy dependencies from deps stage
@@ -26,12 +28,15 @@ RUN npx prisma generate
 # Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV NEXT_PHASE=phase-production-build
 
 # Build the application
 RUN npm run build
 
 # ==================== Runner Stage ====================
 FROM node:20-alpine AS runner
+# Install OpenSSL for Prisma runtime
+RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app
 
 # Set environment
@@ -54,9 +59,32 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/tsx ./node_modules/tsx
+COPY --from=builder /app/node_modules/esbuild ./node_modules/esbuild
+COPY --from=builder /app/node_modules/@esbuild ./node_modules/@esbuild
+COPY --from=builder /app/node_modules/get-tsconfig ./node_modules/get-tsconfig
+COPY --from=builder /app/node_modules/resolve-pkg-maps ./node_modules/resolve-pkg-maps
 
 # Create data directory for SQLite
 RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
+
+# Create entrypoint script to initialize database and seed if empty
+RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
+    echo 'set -e' >> /app/entrypoint.sh && \
+    echo 'echo "Initializing database..."' >> /app/entrypoint.sh && \
+    echo 'node /app/node_modules/prisma/build/index.js db push --skip-generate' >> /app/entrypoint.sh && \
+    echo 'echo "Checking if database needs seeding..."' >> /app/entrypoint.sh && \
+    echo 'if [ ! -f /app/data/.seeded ]; then' >> /app/entrypoint.sh && \
+    echo '  echo "Running database seed..."' >> /app/entrypoint.sh && \
+    echo '  node /app/node_modules/tsx/dist/cli.mjs prisma/seed.ts && touch /app/data/.seeded || echo "Seed failed, continuing..."' >> /app/entrypoint.sh && \
+    echo 'else' >> /app/entrypoint.sh && \
+    echo '  echo "Database already seeded"' >> /app/entrypoint.sh && \
+    echo 'fi' >> /app/entrypoint.sh && \
+    echo 'echo "Database ready!"' >> /app/entrypoint.sh && \
+    echo 'exec node server.js' >> /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh && \
+    chown nextjs:nodejs /app/entrypoint.sh
 
 # Switch to non-root user
 USER nextjs
@@ -73,5 +101,5 @@ ENV DATABASE_URL="file:/app/data/garden.db"
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
-# Start the application
-CMD ["node", "server.js"]
+# Start the application with entrypoint
+CMD ["/app/entrypoint.sh"]

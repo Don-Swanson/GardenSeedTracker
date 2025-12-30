@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Leaf, CheckCircle, ArrowRight, Sparkles } from 'lucide-react'
 
-export default function UpgradeSuccessPage() {
+function UpgradeSuccessContent() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session_id')
   const [isVerified, setIsVerified] = useState(false)
@@ -88,5 +88,13 @@ export default function UpgradeSuccessPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function UpgradeSuccessPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">Loading...</div>}>
+      <UpgradeSuccessContent />
+    </Suspense>
   )
 }

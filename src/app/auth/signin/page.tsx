@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Leaf, Mail, AlertCircle, Sparkles } from 'lucide-react'
+import { Leaf, Mail, AlertCircle, Sparkles, Loader2 } from 'lucide-react'
 
-export default function SignInPage() {
+function SignInPageContent() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/'
   const error = searchParams.get('error')
@@ -51,7 +51,7 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-garden-50 to-garden-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-garden-50 to-garden-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -59,21 +59,21 @@ export default function SignInPage() {
             <div className="w-12 h-12 bg-garden-600 rounded-xl flex items-center justify-center">
               <Leaf className="w-7 h-7 text-white" />
             </div>
-            <span className="text-2xl font-bold text-garden-800">GardenSeed</span>
+            <span className="text-2xl font-bold text-garden-800 dark:text-garden-400">GardenSeed</span>
           </Link>
-          <h1 className="mt-6 text-3xl font-bold text-gray-900">Welcome</h1>
-          <p className="mt-2 text-gray-600">Sign in with your email to continue</p>
+          <h1 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">Welcome</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-300">Sign in with your email to continue</p>
         </div>
 
         {/* Sign In Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
           {/* Magic Link Info */}
-          <div className="mb-6 p-4 bg-garden-50 border border-garden-200 rounded-lg">
+          <div className="mb-6 p-4 bg-garden-50 dark:bg-garden-900/50 border border-garden-200 dark:border-garden-700 rounded-lg">
             <div className="flex items-start gap-3">
-              <Sparkles className="w-5 h-5 text-garden-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-garden-800">
+              <Sparkles className="w-5 h-5 text-garden-600 dark:text-garden-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-garden-800 dark:text-garden-200">
                 <p className="font-medium">Passwordless login</p>
-                <p className="text-garden-600 mt-1">
+                <p className="text-garden-600 dark:text-garden-400 mt-1">
                   Enter your email and we&apos;ll send you a magic link to sign in instantly. No password needed!
                 </p>
               </div>
@@ -81,7 +81,7 @@ export default function SignInPage() {
           </div>
 
           {errorMessage && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700">
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-700 rounded-lg flex items-center gap-3 text-red-700 dark:text-red-300">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <p className="text-sm">{errorMessage}</p>
             </div>
@@ -89,11 +89,11 @@ export default function SignInPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email address
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <input
                   id="email"
                   type="email"
@@ -101,7 +101,7 @@ export default function SignInPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-garden-500 focus:border-transparent transition-colors"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-garden-500 focus:border-transparent transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="you@example.com"
                 />
               </div>
@@ -113,9 +113,9 @@ export default function SignInPage() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 text-garden-600 border-gray-300 rounded focus:ring-garden-500"
+                className="w-4 h-4 text-garden-600 border-gray-300 dark:border-gray-600 rounded focus:ring-garden-500 dark:bg-gray-700"
               />
-              <label htmlFor="remember" className="text-sm text-gray-600">
+              <label htmlFor="remember" className="text-sm text-gray-600 dark:text-gray-300">
                 Keep me signed in for 1 year
               </label>
             </div>
@@ -144,17 +144,17 @@ export default function SignInPage() {
             <>
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200"></div>
+                  <div className="w-full border-t border-gray-200 dark:border-gray-600"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-gray-500">or continue with</span>
+                  <span className="px-4 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">or continue with</span>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
-                className="w-full py-3 bg-white border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 transition-all flex items-center justify-center gap-3"
+                className="w-full py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 transition-all flex items-center justify-center gap-3"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path
@@ -179,18 +179,33 @@ export default function SignInPage() {
             </>
           )}
 
-          <p className="mt-6 text-center text-sm text-gray-500">
+          <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
             By signing in, you agree to our{' '}
-            <Link href="/terms" className="text-garden-600 hover:text-garden-700">
+            <Link href="/terms" className="text-garden-600 dark:text-garden-400 hover:text-garden-700 dark:hover:text-garden-300">
               Terms of Service
             </Link>{' '}
             and{' '}
-            <Link href="/privacy" className="text-garden-600 hover:text-garden-700">
+            <Link href="/privacy" className="text-garden-600 dark:text-garden-400 hover:text-garden-700 dark:hover:text-garden-300">
               Privacy Policy
             </Link>
           </p>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-garden-50 to-garden-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-garden-600 dark:text-garden-400 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-300">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SignInPageContent />
+    </Suspense>
   )
 }

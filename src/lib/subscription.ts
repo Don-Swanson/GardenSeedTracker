@@ -18,6 +18,13 @@ export interface SubscriptionFeatures {
   canTrackSeeds: boolean
   canUseWishlist: boolean
   
+  // Seed detail premium features
+  canViewSeedDates: boolean        // Purchase/expiration dates
+  canViewGrowingInfo: boolean      // Days to germinate, maturity, sun, water, spacing, depth
+  canViewSeedNotes: boolean        // Additional notes
+  canViewSeedSource: boolean       // Source/lot number
+  canViewPlantingHistory: boolean  // Planting history on seed detail
+  
   // Paid features
   canLogPlantings: boolean
   canViewCalendar: boolean
@@ -33,6 +40,11 @@ export interface SubscriptionFeatures {
 export const FREE_FEATURES: SubscriptionFeatures = {
   canTrackSeeds: true,
   canUseWishlist: true,
+  canViewSeedDates: false,
+  canViewGrowingInfo: false,
+  canViewSeedNotes: false,
+  canViewSeedSource: false,
+  canViewPlantingHistory: false,
   canLogPlantings: false,
   canViewCalendar: false,
   canViewAlmanac: false,
@@ -47,6 +59,11 @@ export const FREE_FEATURES: SubscriptionFeatures = {
 export const PAID_FEATURES: SubscriptionFeatures = {
   canTrackSeeds: true,
   canUseWishlist: true,
+  canViewSeedDates: true,
+  canViewGrowingInfo: true,
+  canViewSeedNotes: true,
+  canViewSeedSource: true,
+  canViewPlantingHistory: true,
   canLogPlantings: true,
   canViewCalendar: true,
   canViewAlmanac: true,

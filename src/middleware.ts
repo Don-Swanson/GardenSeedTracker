@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 
 // Routes that require authentication (pages)
 const protectedRoutes = [
+  '/dashboard',
   '/seeds',
   '/plantings',
   '/calendar',
@@ -91,6 +92,8 @@ export default withAuth(
 
 export const config = {
   matcher: [
+    // Dashboard (protected)
+    '/dashboard/:path*',
     // Protected pages
     '/seeds/:path*',
     '/plantings/:path*',

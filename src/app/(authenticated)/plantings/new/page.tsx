@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, Save } from 'lucide-react'
+import { ArrowLeft, Save, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { plantingStatuses } from '@/lib/garden-utils'
 
@@ -12,7 +12,7 @@ interface Seed {
   variety: string | null
 }
 
-export default function NewPlantingPage() {
+function NewPlantingPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const preselectedSeedId = searchParams.get('seedId')
@@ -210,5 +210,20 @@ export default function NewPlantingPage() {
         </div>
       </form>
     </div>
+  )
+}
+
+export default function NewPlantingPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-2xl mx-auto">
+        <div className="text-center py-12">
+          <Loader2 className="w-8 h-8 text-garden-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <NewPlantingPageContent />
+    </Suspense>
   )
 }

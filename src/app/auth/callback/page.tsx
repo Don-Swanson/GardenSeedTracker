@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
 // This page handles the redirect after magic link authentication
 // It extends the session if "remember me" was selected
-export default function AuthCallbackPage() {
+function AuthCallbackPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const remember = searchParams.get('remember') === 'true'
@@ -41,5 +41,20 @@ export default function AuthCallbackPage() {
         <p className="text-gray-600">Signing you in...</p>
       </div>
     </div>
+  )
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-garden-50 to-garden-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-garden-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AuthCallbackPageContent />
+    </Suspense>
   )
 }

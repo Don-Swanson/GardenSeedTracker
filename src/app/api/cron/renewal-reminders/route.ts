@@ -3,8 +3,14 @@ import { prisma } from '@/lib/prisma'
 import { getDaysUntilExpiry, PRICING } from '@/lib/subscription'
 import { Resend } from 'resend'
 
-// Initialize Resend for sending emails
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazily initialize Resend to avoid build-time errors
+let resend: Resend | null = null
+function getResendClient() {
+  if (!resend && process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY)
+  }
+  return resend
+}
 
 // Cron job endpoint to send renewal reminder emails
 // This should be called daily by your cron service (e.g., Vercel Cron, GitHub Actions, etc.)
@@ -48,7 +54,6 @@ export async function POST(request: Request) {
           lte: sevenDaysFromNow,
           gt: new Date(), // Not already expired
         },
-        email: { not: null },
       },
       select: {
         id: true,
@@ -81,7 +86,12 @@ export async function POST(request: Request) {
 
       try {
         // Send the reminder email
-        await resend.emails.send({
+        const emailClient = getResendClient()
+        if (!emailClient) {
+          console.error('Resend API key not configured, skipping email')
+          continue
+        }
+        await emailClient.emails.send({
           from: process.env.EMAIL_FROM || 'Garden Seed Tracker <noreply@example.com>',
           to: user.email,
           subject: `🌱 Your Garden Seed Tracker subscription expires in ${daysLeft} days`,
@@ -174,7 +184,7 @@ function generateRenewalEmailHtml(params: {
     
     <div style="text-align: center; margin: 30px 0;">
       <a href="${renewUrl}" style="background: #4a7c23; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-        Renew Now - $${PRICING.minimumAmount}+/year
+        Renew Now - Starting at $${PRICING.tiers[0].amount}/year
       </a>
     </div>
     `
@@ -203,12 +213,4 @@ function generateRenewalEmailHtml(params: {
 </body>
 </html>
 `
-}
-
-// Also reset reminder flag when subscription is renewed (call this after payment)
-export async function resetRenewalReminderFlag(userId: string): Promise<void> {
-  await prisma.user.update({
-    where: { id: userId },
-    data: { renewalReminderSent: false },
-  })
 }

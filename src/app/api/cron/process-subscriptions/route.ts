@@ -4,7 +4,14 @@ import { prisma } from '@/lib/prisma'
 import { squareClient, SQUARE_LOCATION_ID, TRIAL_CONFIG } from '@/lib/square'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazily initialize Resend to avoid build-time errors
+let resend: Resend | null = null
+function getResendClient() {
+  if (!resend && process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY)
+  }
+  return resend
+}
 
 // Cron job to handle:
 // 1. Trial conversions (charge after 7 days)
@@ -237,9 +244,11 @@ async function processAutoRenewals(results: any) {
 
 async function sendTrialConversionEmail(user: any, amount: number) {
   if (!user.email) return
+  const emailClient = getResendClient()
+  if (!emailClient) return
 
   try {
-    await resend.emails.send({
+    await emailClient.emails.send({
       from: process.env.EMAIL_FROM || 'Garden Seed Tracker <noreply@example.com>',
       to: user.email,
       subject: '🌱 Your Garden Seed Tracker Pro subscription is now active!',
@@ -265,9 +274,11 @@ async function sendTrialConversionEmail(user: any, amount: number) {
 
 async function sendTrialExpiredEmail(user: any) {
   if (!user.email) return
+  const emailClient = getResendClient()
+  if (!emailClient) return
 
   try {
-    await resend.emails.send({
+    await emailClient.emails.send({
       from: process.env.EMAIL_FROM || 'Garden Seed Tracker <noreply@example.com>',
       to: user.email,
       subject: '🌱 Your Garden Seed Tracker trial has ended',
@@ -287,9 +298,11 @@ async function sendTrialExpiredEmail(user: any) {
 
 async function sendRenewalSuccessEmail(user: any, amount: number) {
   if (!user.email) return
+  const emailClient = getResendClient()
+  if (!emailClient) return
 
   try {
-    await resend.emails.send({
+    await emailClient.emails.send({
       from: process.env.EMAIL_FROM || 'Garden Seed Tracker <noreply@example.com>',
       to: user.email,
       subject: '🌱 Your Garden Seed Tracker subscription has been renewed',
@@ -308,9 +321,11 @@ async function sendRenewalSuccessEmail(user: any, amount: number) {
 
 async function sendRenewalFailedEmail(user: any) {
   if (!user.email) return
+  const emailClient = getResendClient()
+  if (!emailClient) return
 
   try {
-    await resend.emails.send({
+    await emailClient.emails.send({
       from: process.env.EMAIL_FROM || 'Garden Seed Tracker <noreply@example.com>',
       to: user.email,
       subject: '⚠️ Garden Seed Tracker renewal failed',

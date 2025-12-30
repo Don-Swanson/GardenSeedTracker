@@ -60,7 +60,8 @@ export async function POST(request: Request) {
     const culturalSignificance = sanitizeText(body.culturalSignificance, MAX_LENGTHS.longText)
     const sunRequirement = body.sunRequirement ? validateEnum(body.sunRequirement, VALID_SUN, 'full sun') : null
     const waterNeeds = body.waterNeeds ? validateEnum(body.waterNeeds, VALID_WATER, 'moderate') : null
-    const daysToMaturity = sanitizeText(body.daysToMaturity, MAX_LENGTHS.shortText)
+    const daysToMaturityStr = sanitizeText(body.daysToMaturity, MAX_LENGTHS.shortText)
+    const daysToMaturity = daysToMaturityStr ? parseInt(daysToMaturityStr, 10) || null : null
     const spacing = sanitizeText(body.spacing, MAX_LENGTHS.shortText)
     const plantingDepth = sanitizeText(body.plantingDepth, MAX_LENGTHS.shortText)
     const companionPlants = sanitizeText(body.companionPlants, MAX_LENGTHS.mediumText)
@@ -68,33 +69,23 @@ export async function POST(request: Request) {
     const notes = sanitizeText(body.notes, MAX_LENGTHS.notes)
     const sourceUrl = sanitizeUrl(body.sourceUrl)
 
-    // Generate a URL-friendly slug from the sanitized name
-    const baseSlug = name
-      .toLowerCase()
-      .replace(/&[^;]+;/g, '') // Remove HTML entities
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-    
-    // Check if slug already exists and make it unique if needed
-    let slug = baseSlug
-    let counter = 1
-    while (await prisma.plantingGuide.findUnique({ where: { slug } })) {
-      slug = `${baseSlug}-${counter}`
-      counter++
+    // Check if a plant with this name already exists
+    const existingPlant = await prisma.plantingGuide.findUnique({ where: { name } })
+    if (existingPlant) {
+      return NextResponse.json({ error: 'A plant with this name already exists' }, { status: 400 })
     }
 
     // Create the plant submission (pending approval)
     const plant = await prisma.plantingGuide.create({
       data: {
-        slug,
         name,
         scientificName,
         category,
         description,
         generalInfo,
-        funFacts,
-        variations,
-        hardinessZones,
+        funFacts: funFacts ? JSON.stringify(funFacts) : null,
+        variations: variations ? JSON.stringify(variations) : null,
+        hardinessZones: hardinessZones ? JSON.stringify(hardinessZones) : null,
         culinaryUses,
         medicinalUses,
         holisticUses,

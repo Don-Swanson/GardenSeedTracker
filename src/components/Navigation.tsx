@@ -20,9 +20,10 @@ import {
   Leaf
 } from 'lucide-react'
 import { useState } from 'react'
+import ThemeToggle from './ThemeToggle'
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: Sprout, requiresAuth: false },
+  { href: '/dashboard', label: 'Dashboard', icon: Sprout, requiresAuth: true },
   { href: '/seeds', label: 'Seed Inventory', icon: Package, requiresAuth: true },
   { href: '/plantings', label: 'Planting Log', icon: MapPin, requiresAuth: true, requiresPaid: true },
   { href: '/calendar', label: 'Planting Calendar', icon: CalendarDays, requiresAuth: true, requiresPaid: true },
@@ -49,15 +50,15 @@ export default function Navigation() {
   })
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-100">
+    <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-100 dark:border-gray-700 transition-colors duration-200">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
+          <Link href={isAuthenticated ? '/dashboard' : '/'} className="flex items-center space-x-2">
             <div className="w-10 h-10 bg-garden-600 rounded-lg flex items-center justify-center">
               <Sprout className="w-6 h-6 text-white" />
             </div>
-            <span className="font-bold text-xl text-gray-800 hidden sm:block">
+            <span className="font-bold text-xl text-gray-800 dark:text-white hidden sm:block">
               Garden Seed Tracker
             </span>
           </Link>
@@ -74,8 +75,8 @@ export default function Navigation() {
                   href={item.href}
                   className={`flex items-center space-x-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-garden-100 text-garden-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      ? 'bg-garden-100 dark:bg-garden-900 text-garden-700 dark:text-garden-300'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -90,13 +91,14 @@ export default function Navigation() {
 
           {/* Auth Section */}
           <div className="hidden md:flex items-center space-x-3">
+            <ThemeToggle />
             {isLoading ? (
-              <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
+              <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
             ) : isAuthenticated ? (
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100"
+                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   {session.user.image ? (
                     <img
@@ -105,8 +107,8 @@ export default function Navigation() {
                       className="w-8 h-8 rounded-full"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-garden-100 flex items-center justify-center">
-                      <User className="w-4 h-4 text-garden-600" />
+                    <div className="w-8 h-8 rounded-full bg-garden-100 dark:bg-garden-900 flex items-center justify-center">
+                      <User className="w-4 h-4 text-garden-600 dark:text-garden-400" />
                     </div>
                   )}
                   {isPaid && (
@@ -115,12 +117,12 @@ export default function Navigation() {
                 </button>
 
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900">{session.user.name}</p>
-                      <p className="text-xs text-gray-500">{session.user.email}</p>
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+                    <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{session.user.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{session.user.email}</p>
                       {isPaid ? (
-                        <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">
+                        <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-xs rounded-full">
                           <Crown className="w-3 h-3" />
                           Pro
                         </span>
@@ -128,7 +130,7 @@ export default function Navigation() {
                         <Link
                           href="/upgrade"
                           onClick={() => setUserMenuOpen(false)}
-                          className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-garden-100 text-garden-700 text-xs rounded-full hover:bg-garden-200"
+                          className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-garden-100 dark:bg-garden-900 text-garden-700 dark:text-garden-300 text-xs rounded-full hover:bg-garden-200 dark:hover:bg-garden-800"
                         >
                           Upgrade to Pro
                         </Link>
@@ -137,7 +139,7 @@ export default function Navigation() {
                     <Link
                       href="/settings"
                       onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
                       <Settings className="w-4 h-4" />
                       <span>Settings</span>
@@ -147,7 +149,7 @@ export default function Navigation() {
                         setUserMenuOpen(false)
                         signOut({ callbackUrl: '/' })
                       }}
-                      className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                     >
                       <LogOut className="w-4 h-4" />
                       <span>Sign out</span>
@@ -159,7 +161,7 @@ export default function Navigation() {
               <div className="flex items-center space-x-2">
                 <Link
                   href="/auth/signin"
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+                  className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                 >
                   Sign in
                 </Link>
@@ -174,21 +176,24 @@ export default function Navigation() {
           </div>
 
           {/* Mobile menu button */}
-          <button
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? (
-              <X className="w-6 h-6" />
-            ) : (
-              <Menu className="w-6 h-6" />
-            )}
-          </button>
+          <div className="md:hidden flex items-center space-x-2">
+            <ThemeToggle />
+            <button
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+              ) : (
+                <Menu className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-100">
+          <div className="md:hidden py-4 border-t border-gray-100 dark:border-gray-700">
             {visibleNavItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
@@ -200,8 +205,8 @@ export default function Navigation() {
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-garden-100 text-garden-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      ? 'bg-garden-100 dark:bg-garden-900 text-garden-700 dark:text-garden-300'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                   }`}
                 >
                   <div className="flex items-center space-x-2">
@@ -216,18 +221,18 @@ export default function Navigation() {
             })}
             
             {/* Mobile Auth */}
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
               {isAuthenticated ? (
                 <>
                   <div className="px-4 py-2 mb-2">
-                    <p className="text-sm font-medium text-gray-900">{session.user.name}</p>
-                    <p className="text-xs text-gray-500">{session.user.email}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{session.user.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{session.user.email}</p>
                   </div>
                   {!isPaid && (
                     <Link
                       href="/upgrade"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center space-x-2 px-4 py-3 text-garden-600 font-medium"
+                      className="flex items-center space-x-2 px-4 py-3 text-garden-600 dark:text-garden-400 font-medium"
                     >
                       <Crown className="w-5 h-5" />
                       <span>Upgrade to Pro</span>
@@ -238,7 +243,7 @@ export default function Navigation() {
                       setMobileMenuOpen(false)
                       signOut({ callbackUrl: '/' })
                     }}
-                    className="w-full flex items-center space-x-2 px-4 py-3 text-red-600"
+                    className="w-full flex items-center space-x-2 px-4 py-3 text-red-600 dark:text-red-400"
                   >
                     <LogOut className="w-5 h-5" />
                     <span>Sign out</span>
@@ -249,7 +254,7 @@ export default function Navigation() {
                   <Link
                     href="/auth/signin"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-center space-x-2 w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-700"
+                    className="flex items-center justify-center space-x-2 w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300"
                   >
                     <LogIn className="w-5 h-5" />
                     <span>Sign in</span>

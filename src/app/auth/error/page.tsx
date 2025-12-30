@@ -1,8 +1,9 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Leaf, AlertTriangle, ArrowLeft } from 'lucide-react'
+import { Leaf, AlertTriangle, ArrowLeft, Loader2 } from 'lucide-react'
 
 const errorMessages: Record<string, { title: string; description: string }> = {
   Configuration: {
@@ -23,14 +24,14 @@ const errorMessages: Record<string, { title: string; description: string }> = {
   },
 }
 
-export default function AuthErrorPage() {
+function AuthErrorPageContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error') || 'Default'
   
   const { title, description } = errorMessages[error] || errorMessages.Default
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-garden-50 to-garden-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-garden-50 to-garden-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -38,19 +39,19 @@ export default function AuthErrorPage() {
             <div className="w-12 h-12 bg-garden-600 rounded-xl flex items-center justify-center">
               <Leaf className="w-7 h-7 text-white" />
             </div>
-            <span className="text-2xl font-bold text-garden-800">GardenSeed</span>
+            <span className="text-2xl font-bold text-garden-800 dark:text-garden-400">GardenSeed</span>
           </Link>
         </div>
 
         {/* Error Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertTriangle className="w-8 h-8 text-red-600" />
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
           </div>
           
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{title}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{title}</h1>
           
-          <p className="text-gray-600 mb-8">{description}</p>
+          <p className="text-gray-600 dark:text-gray-300 mb-8">{description}</p>
 
           <Link
             href="/auth/signin"
@@ -59,10 +60,10 @@ export default function AuthErrorPage() {
             Try again
           </Link>
 
-          <div className="mt-6 pt-6 border-t border-gray-100">
+          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
             <Link 
               href="/" 
-              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+              className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to home
@@ -71,5 +72,20 @@ export default function AuthErrorPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-garden-50 to-garden-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-garden-600 dark:text-garden-400 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-300">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AuthErrorPageContent />
+    </Suspense>
   )
 }

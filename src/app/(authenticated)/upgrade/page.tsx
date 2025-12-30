@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { 
@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { PRICING } from '@/lib/subscription'
 
-export default function UpgradePage() {
+function UpgradePageContent() {
   const searchParams = useSearchParams()
   const requestedFeature = searchParams.get('feature')
   const [isLoading, setIsLoading] = useState(false)
@@ -393,5 +393,13 @@ export default function UpgradePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function UpgradePage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">Loading...</div>}>
+      <UpgradePageContent />
+    </Suspense>
   )
 }

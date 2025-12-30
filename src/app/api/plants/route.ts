@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
-    const search = searchParams.get('search')
+    const search = searchParams.get('search')?.toLowerCase()
     
     const where: any = {
       isApproved: true,
@@ -17,10 +17,11 @@ export async function GET(request: NextRequest) {
     }
     
     if (search) {
+      // Use case-insensitive search with mode for SQLite compatibility
       where.OR = [
-        { name: { contains: search } },
-        { scientificName: { contains: search } },
-        { description: { contains: search } },
+        { name: { contains: search, mode: 'insensitive' } },
+        { scientificName: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
       ]
     }
     

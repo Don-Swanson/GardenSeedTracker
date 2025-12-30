@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Plus, Search, Filter, Package } from 'lucide-react'
 import SeedCard from '@/components/SeedCard'
 import SeedFilters from '@/components/SeedFilters'
+import { getAuthSession } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,15 +15,24 @@ export default async function SeedsPage({ searchParams }: PageProps) {
   const params = await searchParams
   const { category, search } = params
   
+  // Get user session for subscription check
+  const session = await getAuthSession()
+  const isPaid = session?.user?.isPaid ?? false
+  
   const where: any = {}
   
   if (category && category !== 'all') {
-    where.category = category
+    where.OR = [
+      { plantType: { category } },
+      { customCategory: category },
+    ]
   }
   
   if (search) {
     where.OR = [
-      { name: { contains: search } },
+      { plantType: { name: { contains: search } } },
+      { customPlantName: { contains: search } },
+      { nickname: { contains: search } },
       { variety: { contains: search } },
       { brand: { contains: search } },
     ]
@@ -30,27 +40,47 @@ export default async function SeedsPage({ searchParams }: PageProps) {
 
   const seeds = await prisma.seed.findMany({
     where,
-    orderBy: { name: 'asc' },
+    orderBy: { createdAt: 'desc' },
     include: {
+      plantType: true,
       plantings: {
-        orderBy: { plantingDate: 'desc' },
+        orderBy: { createdAt: 'desc' },
         take: 1,
+        include: {
+          plantingEvents: { orderBy: { date: 'desc' }, take: 1 },
+        },
       },
     },
   })
 
-  const categories = await prisma.seed.groupBy({
-    by: ['category'],
-    _count: true,
+  // Get unique categories from seeds
+  const seedsWithCategories = await prisma.seed.findMany({
+    select: {
+      plantType: { select: { category: true } },
+      customCategory: true,
+    },
   })
+  
+  const categorySet = new Set<string>()
+  seedsWithCategories.forEach(s => {
+    if (s.plantType?.category) categorySet.add(s.plantType.category)
+    if (s.customCategory) categorySet.add(s.customCategory)
+  })
+  
+  const categories = Array.from(categorySet).map(cat => ({
+    category: cat,
+    _count: seedsWithCategories.filter(s => 
+      s.plantType?.category === cat || s.customCategory === cat
+    ).length,
+  }))
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Seed Inventory</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Seed Inventory</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
             Manage your seed collection ({seeds.length} varieties)
           </p>
         </div>
@@ -70,9 +100,9 @@ export default async function SeedsPage({ searchParams }: PageProps) {
       {/* Seeds Grid */}
       {seeds.length === 0 ? (
         <div className="card text-center py-12">
-          <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No seeds found</h3>
-          <p className="text-gray-500 mb-4">
+          <Package className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No seeds found</h3>
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
             {search || category 
               ? 'Try adjusting your filters or search terms.'
               : 'Start building your seed inventory by adding your first seeds.'}
@@ -85,7 +115,7 @@ export default async function SeedsPage({ searchParams }: PageProps) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {seeds.map((seed) => (
-            <SeedCard key={seed.id} seed={seed} />
+            <SeedCard key={seed.id} seed={seed} isPaid={isPaid} />
           ))}
         </div>
       )}

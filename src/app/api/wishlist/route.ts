@@ -49,10 +49,12 @@ export async function POST(request: Request) {
 
     const data = await request.json()
 
-    // Validate required field
-    const name = sanitizeText(data.name, MAX_LENGTHS.name)
-    if (!name) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    // Validate required field - either plantTypeId or customPlantName
+    const customPlantName = sanitizeText(data.name || data.customPlantName, MAX_LENGTHS.name)
+    const plantTypeId = sanitizeText(data.plantTypeId, MAX_LENGTHS.name)
+    
+    if (!customPlantName && !plantTypeId) {
+      return NextResponse.json({ error: 'Plant name or type is required' }, { status: 400 })
     }
 
     // Sanitize all input fields
@@ -67,7 +69,8 @@ export async function POST(request: Request) {
     const item = await prisma.wishlistItem.create({
       data: {
         userId: session.user.id, // Secure: use authenticated user ID
-        name,
+        plantTypeId,
+        customPlantName,
         variety,
         brand,
         estimatedPrice,

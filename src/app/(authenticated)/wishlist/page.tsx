@@ -17,8 +17,9 @@ export default async function WishlistPage({ searchParams }: PageProps) {
     where: { purchased: showPurchased },
     orderBy: [
       { priority: 'asc' },
-      { name: 'asc' },
+      { createdAt: 'desc' },
     ],
+    include: { plantType: true },
   })
 
   const purchasedCount = await prisma.wishlistItem.count({
@@ -94,12 +95,14 @@ export default async function WishlistPage({ searchParams }: PageProps) {
         </div>
       ) : (
         <div className="space-y-4">
-          {wishlistItems.map((item) => (
+          {wishlistItems.map((item) => {
+            const itemName = item.plantType?.name || item.customPlantName || 'Unknown'
+            return (
             <div key={item.id} className="card hover:shadow-md transition-shadow">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
-                    <h3 className="font-semibold text-gray-900">{item.name}</h3>
+                    <h3 className="font-semibold text-gray-900">{itemName}</h3>
                     <div className="flex">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star
@@ -138,10 +141,11 @@ export default async function WishlistPage({ searchParams }: PageProps) {
                   )}
                 </div>
                 
-                <WishlistActions item={item} />
+                <WishlistActions item={{ ...item, name: itemName }} />
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

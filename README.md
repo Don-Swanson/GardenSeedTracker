@@ -1,22 +1,29 @@
 # 🌱 Garden Seed Tracker
 
-A comprehensive web application to help gardeners track their seeds, plan plantings, and grow successful gardens. Features passwordless authentication, subscription-based premium features, and automatic recurring billing.
+A comprehensive web application to help gardeners track their seeds, plan plantings, and grow successful gardens. Features passwordless authentication, subscription-based premium features, dark mode support, and automatic recurring billing.
 
 ## ✨ Features
 
 ### 🆓 Free Features
-- **📦 Seed Inventory Management** - Track seeds you have at home with quantity, brand, variety, and planting notes
+- **📦 Basic Seed Inventory** - Track seeds with name, quantity, brand, and variety
 - **⭐ Seed Wishlist** - Keep track of seeds you want to buy with priority levels and purchase links
 - **🌿 Plant Encyclopedia** - Browse 50+ plants with detailed information, growing guides, recipes, and medicinal uses
 - **💡 Community Contributions** - Submit suggestions to improve plant information
 - **⚙️ Settings** - Configure your USDA hardiness zone and preferences
+- **🌙 Dark Mode** - Full dark mode support throughout the app
 
-### 💎 Pro Features (Starting at $5/year)
-- **📍 Planting Log** - Record when and where you plant seeds, track growth events (germination, transplanting, harvest)
+### 💎 Pro Features ($4.99/year or $59 Lifetime)
+- **📅 Seed Dates** - Track sow dates, purchase dates, and expiration dates
+- **🌱 Growing Info** - Days to germination, days to maturity, planting depth, and spacing
+- **📝 Seed Notes** - Add detailed notes for each seed variety
+- **🏪 Seed Source** - Track where you purchased your seeds
+- **📍 Planting History** - Link seeds to plantings and track growth events
 - **📅 Planting Calendar** - View optimal planting times based on your hardiness zone with frost date calculations
 - **📖 Farmers Almanac** - Moon phases, companion planting guides, pest control tips, and seasonal advice
 - **📤 Export Data** - Download your garden data anytime in JSON format
 - **🎯 Priority Support** - Get help when you need it
+
+> **Free users see a blurred preview** of premium fields, so they know exactly what features they're missing!
 
 ### 📚 Plant Encyclopedia
 Each plant page includes:
@@ -35,14 +42,9 @@ Each plant page includes:
 ### 💰 Subscription Tiers
 | Tier | Price | Features |
 |------|-------|----------|
-| **Free Trial** | $0 for 7 days | Full access to all Pro features, auto-converts to $5/year |
-| **Starter** | $5/year | All Pro features |
-| **Supporter** | $10/year | All Pro features + support development |
-| **Enthusiast** | $15/year | All Pro features + support development |
-| **Patron** | $20/year | All Pro features + support development |
-| **Champion** | $25/year | All Pro features + support development |
-| **Benefactor** | $50/year | All Pro features + support development |
-| **Lifetime** | One-time | Permanent access (granted by admin) |
+| **Free** | $0 | Basic seed tracking, wishlist, plant encyclopedia |
+| **Pro** | $4.99/year | All premium features with annual billing |
+| **Lifetime** | $59 one-time | Permanent access to all features forever |
 
 ### 🔐 Authentication
 - **Passwordless Magic Links** - Secure, no-password sign-in via email
@@ -71,11 +73,11 @@ Each plant page includes:
 | **Database** | SQLite with Prisma ORM |
 | **Authentication** | NextAuth.js (Email Provider + Google OAuth) |
 | **Payments** | Square (Checkout API + Subscriptions) |
-| **Styling** | Tailwind CSS with custom garden theme |
+| **Styling** | Tailwind CSS with dark mode support |
 | **Icons** | Lucide React |
 | **Date Handling** | date-fns |
 | **Language** | TypeScript |
-| **Deployment** | Vercel (with cron jobs) |
+| **Deployment** | Docker / Vercel |
 
 ## 🚀 Getting Started
 
@@ -88,70 +90,74 @@ Each plant page includes:
 
 ### Installation
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/Don-Swanson/GardenSeedTracker.git
-   cd GardenSeedTracker
-   ```
-
-2. **Install dependencies:**
+1. **Install dependencies:**
    ```bash
    npm install
    ```
 
-3. **Configure environment variables:**
+2. **Configure environment variables:**
    ```bash
    cp .env.example .env
    ```
    
-   Edit `.env` and add your credentials:
-   ```env
-   # Database
-   DATABASE_URL="file:./dev.db"
-   
-   # NextAuth
-   NEXTAUTH_URL="http://localhost:3000"
-   NEXTAUTH_SECRET="generate-a-secure-random-string-here"
-   
-   # Email (required for magic links)
-   EMAIL_SERVER_HOST="smtp.example.com"
-   EMAIL_SERVER_PORT="587"
-   EMAIL_SERVER_USER="your-email@example.com"
-   EMAIL_SERVER_PASSWORD="your-email-password"
-   EMAIL_FROM="Garden Seed Tracker <noreply@gardenseedtracker.com>"
-   
-   # Square (required for payments)
-   SQUARE_ACCESS_TOKEN="your-access-token"
-   SQUARE_APP_ID="your-app-id"
-   SQUARE_LOCATION_ID="your-location-id"
-   SQUARE_WEBHOOK_SIGNATURE_KEY="your-webhook-key"
-   SQUARE_ENVIRONMENT="sandbox"  # or "production"
-   
-   # Cron Jobs (for auto-renewal processing)
-   CRON_SECRET="generate-another-secure-random-string"
-   
-   # Optional: Google OAuth
-   # GOOGLE_CLIENT_ID=""
-   # GOOGLE_CLIENT_SECRET=""
-   # NEXT_PUBLIC_GOOGLE_ENABLED="true"
-   
-   # Optional: Admin features
-   # ADMIN_API_KEY="your-admin-api-key"
-   ```
+   Edit `.env` and add your credentials (see Environment Variables section below).
 
-4. **Set up the database:**
+3. **Set up the database:**
    ```bash
    npx prisma generate
    npx prisma db push
    npm run db:seed
    ```
 
-5. **Start the development server:**
+4. **Start the development server:**
    ```bash
    npm run dev
    ```
 
+5. **Open [http://localhost:3000](http://localhost:3000)** in your browser.
+
+### Docker Deployment
+
+The app includes Docker support for easy deployment:
+
+```bash
+# Development
+docker-compose -f docker-compose.dev.yml up
+
+# Production
+docker-compose up -d
+```
+
+The Docker setup includes:
+- Persistent SQLite database volume
+- Automatic container restart
+- Environment variable configuration
+   npm run dev
+   ```
+
 6. **Open [http://localhost:3000](http://localhost:3000)** in your browser.
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | SQLite database path (e.g., `file:./dev.db`) |
+| `NEXTAUTH_URL` | Yes | Your app URL (e.g., `http://localhost:3000`) |
+| `NEXTAUTH_SECRET` | Yes | Random secret for session encryption |
+| `EMAIL_SERVER_HOST` | Yes | SMTP server hostname |
+| `EMAIL_SERVER_PORT` | Yes | SMTP port (usually 587) |
+| `EMAIL_SERVER_USER` | Yes | SMTP username |
+| `EMAIL_SERVER_PASSWORD` | Yes | SMTP password |
+| `EMAIL_FROM` | Yes | From address for emails |
+| `SQUARE_ACCESS_TOKEN` | Yes | Square API access token |
+| `SQUARE_APP_ID` | Yes | Square application ID |
+| `SQUARE_LOCATION_ID` | Yes | Square location ID |
+| `SQUARE_WEBHOOK_SIGNATURE_KEY` | Yes | Square webhook signature key |
+| `SQUARE_ENVIRONMENT` | Yes | `sandbox` or `production` |
+| `CRON_SECRET` | Yes | Secret for cron job authentication |
+| `GOOGLE_CLIENT_ID` | No | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | No | Google OAuth client secret |
+| `ADMIN_API_KEY` | No | API key for admin endpoints |
 
 ### Setting Up Square
 
@@ -196,42 +202,50 @@ For magic link authentication, you need an SMTP server. Options include:
 │   │   │   ├── admin/      # Admin endpoints (lifetime grants, data removal)
 │   │   │   ├── auth/       # Auth endpoints (register, magic links, password reset)
 │   │   │   ├── cron/       # Cron jobs (subscription processing, reminders)
-│   │   │   ├── plantings/  # Planting CRUD + events
+│   │   │   ├── plantings/  # Planting CRUD + events (Pro)
 │   │   │   ├── plants/     # Plant encyclopedia API + suggestions
-│   │   │   ├── seeds/      # Seed inventory CRUD
+│   │   │   ├── seeds/      # Seed inventory CRUD (with Pro fields)
 │   │   │   ├── settings/   # User settings
 │   │   │   ├── square/     # Payment checkout & webhooks
 │   │   │   ├── subscription/ # Subscription status & cancellation
 │   │   │   └── wishlist/   # Wishlist CRUD
 │   │   ├── auth/           # Auth pages (signin, signup, forgot password)
-│   │   ├── seeds/          # Seed inventory pages
-│   │   ├── plantings/      # Planting log pages with event tracking
+│   │   ├── seeds/          # Seed inventory pages with Pro feature gating
+│   │   ├── plantings/      # Planting log pages with event tracking (Pro)
 │   │   ├── plants/         # Plant encyclopedia with detail pages
-│   │   ├── calendar/       # Planting calendar with zone-based dates
+│   │   ├── calendar/       # Planting calendar with zone-based dates (Pro)
 │   │   ├── wishlist/       # Seed wishlist pages
-│   │   ├── almanac/        # Farmers almanac with moon phases
+│   │   ├── almanac/        # Farmers almanac with moon phases (Pro)
 │   │   ├── settings/       # User settings & subscription management
-│   │   ├── upgrade/        # Subscription upgrade with tier selection
+│   │   ├── upgrade/        # Subscription upgrade page
+│   │   ├── pricing/        # Public pricing page
 │   │   ├── privacy/        # Privacy policy page
 │   │   └── terms/          # Terms of service page
 │   ├── components/
 │   │   ├── AuthProvider.tsx    # NextAuth session provider
 │   │   ├── Navigation.tsx      # Main navigation with auth state
-│   │   ├── SeedCard.tsx        # Seed display component
+│   │   ├── SeedCard.tsx        # Seed display with Pro feature indicators
 │   │   ├── SeedFilters.tsx     # Search and filter controls
+│   │   ├── LockedContent.tsx   # Blurred preview for Pro features
 │   │   ├── DeleteSeedButton.tsx # Confirmation delete button
 │   │   └── WishlistActions.tsx  # Wishlist item actions
 │   ├── lib/
 │   │   ├── auth.ts          # NextAuth configuration with magic links
 │   │   ├── prisma.ts        # Prisma client singleton
 │   │   ├── square.ts        # Square client & subscription tiers
-│   │   ├── subscription.ts  # Feature access control & pricing
+│   │   ├── subscription.ts  # Feature access control & Pro gating
 │   │   ├── garden-utils.ts  # Planting date calculations
-│   │   └── stripe.ts        # (Deprecated - using Square)
+│   │   ├── audit.ts         # Audit logging
+│   │   ├── csrf.ts          # CSRF protection
+│   │   └── validation.ts    # Input validation
 │   └── types/
 │       └── next-auth.d.ts   # NextAuth type extensions
+├── docker-compose.yml       # Production Docker config
+├── docker-compose.dev.yml   # Development Docker config
+├── Dockerfile               # Production container
+├── Dockerfile.dev           # Development container
 ├── vercel.json              # Vercel config with cron jobs
-└── tailwind.config.js       # Custom garden/soil color palette
+└── tailwind.config.js       # Tailwind with dark mode
 ```
 
 ## 📜 Scripts
@@ -343,20 +357,6 @@ Edit `prisma/seed.ts` to add new plants to the database. Each plant includes:
 
 - `/privacy` - Privacy Policy
 - `/terms` - Terms of Service with data retention policy
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is open source and available under the [MIT License](LICENSE).
 
 ## 🙏 Acknowledgments
 

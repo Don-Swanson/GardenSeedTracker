@@ -406,23 +406,7 @@ const plantingGuides = [
     commonPests: 'Leaf Miners',
     notes: 'Soak seeds before planting. Greens are edible too.',
   },
-  // Herbs
-  {
-    name: 'Basil',
-    category: 'herb',
-    indoorStartWeeks: 6,
-    outdoorStartWeeks: 2,
-    transplantWeeks: 2,
-    harvestWeeks: 6,
-    minGerminationTemp: 60,
-    optGerminationTemp: 70,
-    sunRequirement: 'full sun',
-    waterNeeds: 'moderate',
-    companionPlants: 'Tomatoes, Peppers',
-    avoidPlants: 'Sage, Rue',
-    commonPests: 'Japanese Beetles, Aphids',
-    notes: 'Pinch flowers to encourage leaf growth.',
-  },
+  // Herbs (Note: Basil is already defined above with full details)
   {
     name: 'Cilantro',
     category: 'herb',

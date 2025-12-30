@@ -15,8 +15,8 @@ services:
       dockerfile: Dockerfile
     container_name: garden-seed-tracker
     restart: unless-stopped
-    ports:
-      - "${PORT:-3000}:3000"
+    expose:
+      - 3000
     environment:
       # Database
       - DATABASE_URL=file:/app/data/garden.db
@@ -42,14 +42,26 @@ services:
       - CRON_SECRET=${CRON_SECRET:-}
       
       # Optional: Resend for emails
-      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      #- RESEND_API_KEY=${RESEND_API_KEY:-}
       
       # Optional: Google OAuth
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      #- GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      #- GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.garden-seed-tracker.entrypoints=websecure
+      - traefik.http.routers.garden-seed-tracker.rule=Host(`garden-seed-tracker.com`) || Host(`www.garden-seed-tracker.com`)
+      - traefik.http.routers.garden-seed-tracker.tls=true
+      - traefik.http.routers.garden-seed-tracker.service=garden-seed-tracker
+      - traefik.http.services.garden-seed-tracker.loadbalancer.server.port=80
+        #- traefik.http.routers.garden-seed-tracker.tls.certresolver=le
+      - traefik.http.routers.garden-seed-tracker.tls.certresolver=cloudflare
+      - traefik.docker.network=traefik_public
+
     volumes:
       # Persist SQLite database
-      - garden_data:/app/data
+      - /docker/gardenseedtracker/garden_data:/app/data
     # Run as root initially to fix volume permissions, then drop to nextjs user
     user: "0:0"
     command: >
@@ -60,13 +72,18 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    networks:
-      - garden_network
 
-volumes:
-  garden_data:
-    driver: local
+    networks:
+      - garden-network
+      - traefik_public
 
 networks:
-  garden_network:
+  garden-network:
     driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.69.16/28
+          gateway: 10.0.69.17
+  traefik_public:
+    external: true

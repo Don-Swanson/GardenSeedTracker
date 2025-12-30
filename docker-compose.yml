@@ -49,7 +49,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.routers.garden-seed-tracker.entrypoints=websecure
-      - traefik.http.routers.garden-seed-tracker.rule=Host(`garden-seed-tracker.com`) || Host(`www.garden-seed-tracker.com`)
+      - traefik.http.routers.garden-seed-tracker.rule=Host(`gardenseedtracker.com`) || Host(`www.gardenseedtracker.com`)
       - traefik.http.routers.garden-seed-tracker.tls=true
       - traefik.http.routers.garden-seed-tracker.service=garden-seed-tracker
       - traefik.http.services.garden-seed-tracker.loadbalancer.server.port=80

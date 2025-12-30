@@ -67,11 +67,20 @@ COPY --from=builder /app/node_modules/get-tsconfig ./node_modules/get-tsconfig
 COPY --from=builder /app/node_modules/resolve-pkg-maps ./node_modules/resolve-pkg-maps
 
 # Create data directory for SQLite
+# Note: The volume mount will override this, but we need the directory structure
 RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
 
 # Create entrypoint script to initialize database and seed if empty
 RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
     echo 'set -e' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Ensure data directory exists and has correct permissions' >> /app/entrypoint.sh && \
+    echo 'if [ ! -w /app/data ]; then' >> /app/entrypoint.sh && \
+    echo '  echo "ERROR: /app/data is not writable. Please ensure the volume has correct permissions."' >> /app/entrypoint.sh && \
+    echo '  echo "Run: docker volume rm garden-seed-tracker_garden_data && docker-compose up -d"' >> /app/entrypoint.sh && \
+    echo '  exit 1' >> /app/entrypoint.sh && \
+    echo 'fi' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
     echo 'echo "Initializing database..."' >> /app/entrypoint.sh && \
     echo 'node /app/node_modules/prisma/build/index.js db push --skip-generate' >> /app/entrypoint.sh && \
     echo 'echo "Checking if database needs seeding..."' >> /app/entrypoint.sh && \

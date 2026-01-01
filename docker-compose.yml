@@ -11,6 +11,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    #image: gardenseedtracker
     container_name: garden-seed-tracker
     restart: unless-stopped
     expose:
@@ -49,11 +50,10 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.routers.garden-seed-tracker.entrypoints=websecure
-      - traefik.http.routers.garden-seed-tracker.rule=Host(`gardenseedtracker.com`) || Host(`www.gardenseedtracker.com`)
+      - traefik.http.routers.garden-seed-tracker.rule=Host(`gardenseedtracker.com`)
       - traefik.http.routers.garden-seed-tracker.tls=true
       - traefik.http.routers.garden-seed-tracker.service=garden-seed-tracker
       - traefik.http.services.garden-seed-tracker.loadbalancer.server.port=3000
-        #- traefik.http.routers.garden-seed-tracker.tls.certresolver=le
       - traefik.http.routers.garden-seed-tracker.tls.certresolver=cloudflare
       - traefik.docker.network=traefik_public
 
@@ -72,8 +72,8 @@ services:
       start_period: 10s
 
     networks:
-      - garden-network
       - traefik_public
+      - garden-network
 
 networks:
   garden-network:

@@ -52,7 +52,7 @@ services:
       - traefik.http.routers.garden-seed-tracker.rule=Host(`gardenseedtracker.com`) || Host(`www.gardenseedtracker.com`)
       - traefik.http.routers.garden-seed-tracker.tls=true
       - traefik.http.routers.garden-seed-tracker.service=garden-seed-tracker
-      - traefik.http.services.garden-seed-tracker.loadbalancer.server.port=80
+      - traefik.http.services.garden-seed-tracker.loadbalancer.server.port=3000
         #- traefik.http.routers.garden-seed-tracker.tls.certresolver=le
       - traefik.http.routers.garden-seed-tracker.tls.certresolver=cloudflare
       - traefik.docker.network=traefik_public

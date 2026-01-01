@@ -49,12 +49,23 @@ services:
 
     labels:
       - traefik.enable=true
+      # HTTP router - redirects to HTTPS
+      - traefik.http.routers.garden-seed-tracker-http.entrypoints=web
+      - traefik.http.routers.garden-seed-tracker-http.rule=Host(`gardenseedtracker.com`)
+      - traefik.http.routers.garden-seed-tracker-http.middlewares=garden-redirect-to-https
+      # HTTPS router
       - traefik.http.routers.garden-seed-tracker.entrypoints=websecure
       - traefik.http.routers.garden-seed-tracker.rule=Host(`gardenseedtracker.com`)
       - traefik.http.routers.garden-seed-tracker.tls=true
-      - traefik.http.routers.garden-seed-tracker.service=garden-seed-tracker
-      - traefik.http.services.garden-seed-tracker.loadbalancer.server.port=3000
       - traefik.http.routers.garden-seed-tracker.tls.certresolver=cloudflare
+      - traefik.http.routers.garden-seed-tracker.service=garden-seed-tracker
+      # Service configuration
+      - traefik.http.services.garden-seed-tracker.loadbalancer.server.port=3000
+      - traefik.http.services.garden-seed-tracker.loadbalancer.server.scheme=http
+      # Middleware for redirect
+      - traefik.http.middlewares.garden-redirect-to-https.redirectscheme.scheme=https
+      - traefik.http.middlewares.garden-redirect-to-https.redirectscheme.permanent=true
+      # Specify which Docker network Traefik should use
       - traefik.docker.network=traefik_public
 
     volumes:
@@ -65,11 +76,11 @@ services:
     command: >
       sh -c "chown -R 1001:1001 /app/data && su -s /bin/sh nextjs -c '/app/entrypoint.sh'"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 40s
 
     networks:
       - traefik_public

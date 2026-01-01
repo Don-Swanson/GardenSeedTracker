@@ -13,12 +13,11 @@ async function sendVerificationRequest({
 }: {
   identifier: string
   url: string
-  provider: { from: string }
+  provider: { from: string; server: any }
 }) {
   const IS_PRODUCTION = process.env.NODE_ENV === 'production'
   
-  // In production, use a real email service (SendGrid, Resend, AWS SES, etc.)
-  // SECURITY: Only log magic links in development, never in production
+  // Always log in non-production for debugging
   if (!IS_PRODUCTION) {
     console.log('━'.repeat(60))
     console.log('🔐 MAGIC LINK LOGIN (DEV ONLY)')
@@ -28,26 +27,37 @@ async function sendVerificationRequest({
     console.log('━'.repeat(60))
   }
   
-  // Example SendGrid implementation:
-  // const sgMail = require('@sendgrid/mail')
-  // sgMail.setApiKey(process.env.SENDGRID_API_KEY)
-  // await sgMail.send({
-  //   to: email,
-  //   from: provider.from,
-  //   subject: 'Sign in to GardenSeed Tracker',
-  //   html: `
-  //     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-  //       <h1 style="color: #16a34a;">🌱 GardenSeed Tracker</h1>
-  //       <p>Click the button below to sign in to your account:</p>
-  //       <a href="${url}" style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
-  //         Sign In
-  //       </a>
-  //       <p style="margin-top: 24px; color: #666; font-size: 14px;">
-  //         This link expires in 24 hours. If you didn't request this, you can safely ignore this email.
-  //       </p>
-  //     </div>
-  //   `,
-  // })
+  try {
+    // Use nodemailer to send the email via SMTP
+    const nodemailer = require('nodemailer')
+    
+    const transport = nodemailer.createTransport(provider.server)
+    
+    const result = await transport.sendMail({
+      to: email,
+      from: provider.from,
+      subject: 'Sign in to Garden Seed Tracker',
+      text: `Sign in to Garden Seed Tracker\n\nClick here to sign in: ${url}\n\nThis link expires in 24 hours. If you didn't request this, you can safely ignore this email.`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #16a34a;">🌱 Garden Seed Tracker</h1>
+          <p>Click the button below to sign in to your account:</p>
+          <a href="${url}" style="display: inline-block; background: #16a34a; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+            Sign In
+          </a>
+          <p style="margin-top: 24px; color: #666; font-size: 14px;">
+            This link expires in 24 hours. If you didn't request this, you can safely ignore this email.
+          </p>
+        </div>
+      `,
+    })
+    
+    console.log(`✅ Magic link email sent to ${email}`)
+    console.log(`📧 Message ID: ${result.messageId}`)
+  } catch (error) {
+    console.error('❌ Failed to send magic link email:', error)
+    throw error
+  }
 }
 
 // Session duration constants
@@ -72,10 +82,16 @@ export const authOptions: NextAuthOptions = {
       server: process.env.EMAIL_SERVER || {
         host: process.env.EMAIL_SERVER_HOST || 'smtp.example.com',
         port: Number(process.env.EMAIL_SERVER_PORT) || 587,
-        auth: {
-          user: process.env.EMAIL_SERVER_USER || '',
-          pass: process.env.EMAIL_SERVER_PASSWORD || '',
-        },
+        secure: false, // Use TLS but not SSL
+        // Only include auth if credentials are provided
+        ...(process.env.EMAIL_SERVER_USER && process.env.EMAIL_SERVER_PASSWORD
+          ? {
+              auth: {
+                user: process.env.EMAIL_SERVER_USER,
+                pass: process.env.EMAIL_SERVER_PASSWORD,
+              },
+            }
+          : {}),
       },
       from: process.env.EMAIL_FROM || 'noreply@gardenseedtracker.com',
       maxAge: 24 * 60 * 60, // Magic link valid for 24 hours

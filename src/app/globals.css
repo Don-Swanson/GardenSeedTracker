@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
+}
+
+.dark {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 17, 24, 39;
+  --background-end-rgb: 17, 24, 39;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-start-rgb));
+}
+
+/* Global dark mode text improvements */
+@layer base {
+  /* Headings - bright and bold */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-gray-900 dark:text-white;
+  }
+  
+  /* Body text - high contrast */
+  p, span, div {
+    @apply dark:text-gray-200;
+  }
+  
+  /* Secondary text - still readable */
+  .text-gray-500 {
+    @apply dark:text-gray-400;
+  }
+  
+  .text-gray-600 {
+    @apply dark:text-gray-300;
+  }
+  
+  /* Form inputs - always readable */
+  input, textarea, select {
+    @apply text-gray-900 bg-white dark:bg-gray-800 dark:text-white;
+  }
+  
+  input::placeholder, textarea::placeholder {
+    @apply text-gray-400 dark:text-gray-500;
+  }
+  
+  /* Links - visible in dark mode */
+  a {
+    @apply dark:text-gray-200;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+  }
+  
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-garden-600 text-white hover:bg-garden-700;
+  }
+  
+  .btn-secondary {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600;
+  }
+  
+  .btn-danger {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-red-600 text-white hover:bg-red-700;
+  }
+  
+  .btn-outline {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700;
+  }
+  
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6;
+  }
+  
+  .input {
+    @apply w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-garden-500 focus:border-garden-500 outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500;
+  }
+  
+  .label {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1;
+  }
+}

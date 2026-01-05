@@ -1,0 +1,62 @@
+# GardenSeedTracker Docker Compose Configuration
+# 
+# Usage:
+#   Development: docker-compose up
+#   Production:  docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Environment variables should be set in .env file or passed via command line
+
+services:
+  app:
+    #build:
+    #  context: .
+    #  dockerfile: Dockerfile
+    image: gardenseedtracker
+    container_name: garden-seed-tracker
+    restart: unless-stopped
+    expose:
+      - 3000
+    environment:
+      # Database
+      - DATABASE_URL=file:/app/data/garden.db
+      
+      # NextAuth Configuration
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
+      
+      # Email Configuration (for magic links)
+      - EMAIL_SERVER_HOST=${EMAIL_SERVER_HOST:-}
+      - EMAIL_SERVER_PORT=${EMAIL_SERVER_PORT:-587}
+      - EMAIL_SERVER_USER=${EMAIL_SERVER_USER:-}
+      - EMAIL_SERVER_PASSWORD=${EMAIL_SERVER_PASSWORD:-}
+      - EMAIL_FROM=${EMAIL_FROM:-Garden Seed Tracker <noreply@gardenseedtracker.com>}
+      
+      # Cron Security
+      - CRON_SECRET=${CRON_SECRET:-}
+      
+      # Optional: Resend for emails
+      #- RESEND_API_KEY=${RESEND_API_KEY:-}
+      
+      # Optional: Google OAuth
+      #- GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      #- GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+
+    volumes:
+      # Persist SQLite database
+      - ./data:/app/data
+    # Run as root initially to fix volume permissions, then drop to nextjs user
+    user: "0:0"
+    command: >
+      sh -c "chown -R 1001:1001 /app/data && su -s /bin/sh nextjs -c '/app/entrypoint.sh'"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    networks:
+      - garden-network
+
+networks:
+  garden-network:

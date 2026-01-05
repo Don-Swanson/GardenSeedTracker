@@ -1,0 +1,504 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== AUTHENTICATION ====================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String?   // Legacy - not used with magic link auth
+  name          String?
+  username      String?   @unique  // Public display name for contributions
+  image         String?
+  role          String    @default("user") // "user", "admin"
+  
+  // Email change flow
+  pendingEmail          String?   // New email awaiting verification
+  emailChangeToken      String?   // Token for email change verification
+  emailChangeExpires    DateTime? // When the email change token expires
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  seeds         Seed[]
+  plantings     Planting[]
+  wishlistItems WishlistItem[]
+  gardenLocations GardenLocation[]
+  settings      UserSettings?
+  plantRequests PlantRequest[]
+  plantSubmissions PlantingGuide[] @relation("PlantSubmissions")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Temporary storage for signup data before email verification
+model SignupData {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  username  String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@index([expiresAt])
+}
+
+// ==================== SEED INVENTORY ====================
+
+model Seed {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  nickname        String?  // User's custom name, e.g., "Grandma's tomatoes"
+  variety         String?  // e.g., "Roma", "Cherokee Purple"
+  brand           String?  // e.g., "Burpee", "Baker Creek"
+  quantity        Int      @default(1)
+  quantityUnit    String   @default("seeds") // "seeds", "packets", "grams"
+  purchaseDate    DateTime?
+  expirationDate  DateTime?
+  
+  // Override values from plant type
+  daysToGerminate Int?
+  daysToMaturity  Int?
+  sunRequirement  String?
+  waterNeeds      String?
+  spacing         String?
+  plantingDepth   String?
+  
+  notes           String?
+  imageUrl        String?
+  lotNumber       String?
+  source          String?
+  
+  // Link to plant type database
+  plantTypeId     String?
+  plantType       PlantingGuide? @relation(fields: [plantTypeId], references: [id])
+  
+  // For custom plant types not in database
+  customPlantName String?
+  customCategory  String?
+  
+  isArchived      Boolean  @default(false)
+  
+  // Individual planting reminders (when global reminders are disabled)
+  enableIndoorStartReminder Boolean @default(false)
+  enableDirectSowReminder   Boolean @default(false)
+  enableTransplantReminder  Boolean @default(false)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  plantings       Planting[]
+  
+  @@index([userId])
+}
+
+// ==================== PLANTING LOG ====================
+
+model Planting {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seedId          String
+  seed            Seed     @relation(fields: [seedId], references: [id], onDelete: Cascade)
+  
+  // Main location for this planting group
+  locationId      String?
+  location        GardenLocation? @relation(fields: [locationId], references: [id])
+  locationName    String   // Fallback text location
+  quantityPlanted Int      @default(1)
+  harvestDate     DateTime?
+  actualYield     String?
+  status          String   @default("planted") // planted, germinated, growing, harvested, failed
+  notes           String?  // General notes for this planting
+  
+  // Multiple planting events (dates) for this planting
+  plantingEvents  PlantingEvent[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+// Individual planting event/date for a Planting
+model PlantingEvent {
+  id          String   @id @default(cuid())
+  plantingId  String
+  planting    Planting @relation(fields: [plantingId], references: [id], onDelete: Cascade)
+  
+  date        DateTime
+  quantity    Int?     // Optional quantity for this specific planting event
+  method      String?  // "direct sow", "transplant", "indoor start", etc.
+  notes       String?  // Notes specific to this planting date
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([plantingId])
+}
+
+// ==================== WISHLIST ====================
+
+model WishlistItem {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  plantTypeId    String?
+  plantType      PlantingGuide? @relation(fields: [plantTypeId], references: [id])
+  customPlantName String?
+  
+  // Custom planting dates (for items not linked to plant encyclopedia)
+  indoorStartWeeks  Int?    // Weeks before last frost to start indoors
+  outdoorStartWeeks Int?    // Weeks relative to last frost for direct sow (negative = before, positive = after)
+  
+  variety        String?
+  brand          String?
+  estimatedPrice Float?
+  priority       Int      @default(3)
+  sourceUrl      String?
+  notes          String?
+  purchased      Boolean  @default(false)
+  purchasedDate  DateTime?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+// ==================== GARDEN LOCATIONS ====================
+
+model GardenLocation {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  sunExposure String?
+  soilType    String?
+  size        String?
+  notes       String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  plantings   Planting[]
+  
+  @@index([userId])
+}
+
+// ==================== USER SETTINGS ====================
+
+model UserSettings {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  zipCode         String?
+  hardinessZone   String?
+  lastFrostDate   DateTime?
+  firstFrostDate  DateTime?
+  latitude        Float?
+  longitude       Float?
+  
+  // Notification preferences
+  emailNotifications Boolean @default(true)
+  plantingReminders  Boolean @default(true)
+  
+  // Planting reminder settings (global)
+  enableIndoorStartReminders Boolean @default(false) // Remind for indoor start dates
+  enableDirectSowReminders   Boolean @default(false) // Remind for direct sow dates
+  enableTransplantReminders  Boolean @default(false) // Remind for transplant dates
+  reminderLeadDays           Int     @default(7)     // Days before planting date to send reminder
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ==================== PLANT DATABASE ====================
+
+model PlantingGuide {
+  id                    String   @id @default(cuid())
+  name                  String   @unique
+  category              String
+  subcategory           String?
+  scientificName        String?
+  description           String?
+  
+  // Detailed information
+  generalInfo           String?  // Extended description and history
+  funFacts              String?  // JSON array of interesting facts
+  variations            String?  // JSON array of popular varieties
+  
+  // Growing zones
+  hardinessZones        String?  // JSON array of zones (e.g., ["3a", "3b", "4a", ...])
+  optimalZones          String?  // JSON array of best zones
+  zoneNotes             String?  // Special zone-related notes
+  
+  // Culinary uses
+  culinaryUses          String?  // Description of culinary applications
+  recipes               String?  // JSON array of recipe objects
+  flavorProfile         String?  // Taste description
+  nutritionalInfo       String?  // Nutritional benefits
+  
+  // Medicinal & holistic uses
+  medicinalUses         String?  // Traditional/modern medicinal uses
+  holisticUses          String?  // Aromatherapy, companion uses, etc.
+  cautions              String?  // Safety warnings or contraindications
+  
+  // Craft & DIY uses
+  craftIdeas            String?  // JSON array of craft projects using the plant
+  
+  // Historical & cultural
+  history               String?  // Origin and historical significance
+  culturalSignificance  String?  // Cultural or symbolic meanings
+  
+  // Timing
+  indoorStartWeeks      Int?
+  outdoorStartWeeks     Int?
+  transplantWeeks       Int?
+  harvestWeeks          Int?
+  daysToGerminate       Int?
+  daysToMaturity        Int?
+  
+  // Growing conditions
+  minGerminationTemp    Int?
+  optGerminationTemp    Int?
+  minGrowingTemp        Int?
+  maxGrowingTemp        Int?
+  sunRequirement        String?
+  waterNeeds            String?
+  soilPH                String?
+  
+  // Planting info
+  spacing               String?
+  plantingDepth         String?
+  rowSpacing            String?
+  plantsPerSquareFoot   Float?
+  
+  // Companion planting
+  companionPlants       String?
+  avoidPlants           String?
+  
+  // Pests & diseases
+  commonPests           String?
+  commonDiseases        String?
+  organicPestControl    String?
+  
+  // Harvest & storage
+  harvestTips           String?
+  storageTips           String?
+  preservationMethods   String?
+  
+  notes                 String?
+  imageUrl              String?
+  
+  // Admin flags
+  isUserSubmitted       Boolean  @default(false)
+  isApproved            Boolean  @default(true)
+  submittedById         String?
+  submittedBy           User?    @relation("PlantSubmissions", fields: [submittedById], references: [id])
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  seeds                 Seed[]
+  wishlistItems         WishlistItem[]
+  suggestions           PlantSuggestion[]
+}
+
+// ==================== PLANT SUGGESTIONS ====================
+
+model PlantSuggestion {
+  id              String   @id @default(cuid())
+  plantId         String
+  plant           PlantingGuide @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  
+  userId          String?  // Optional - can allow anonymous suggestions
+  userEmail       String?  // For follow-up if not logged in
+  userName        String?  // Display name
+  
+  section         String   // Which section: "general", "zones", "facts", "variations", "recipes", "medicinal", "holistic"
+  suggestionType  String   // "addition", "correction", "removal"
+  currentContent  String?  // What currently exists (for corrections)
+  suggestedContent String  // The suggested content
+  sourceUrl       String?  // Citation/source for the information
+  notes           String?  // Additional context from user
+  
+  status          String   @default("pending") // "pending", "reviewing", "approved", "rejected"
+  adminNotes      String?  // Notes from reviewer
+  reviewedById    String?  // Admin who reviewed
+  reviewedAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([plantId])
+  @@index([status])
+}
+
+// ==================== FEATURE REQUESTS ====================
+
+model PlantRequest {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  plantName       String
+  category        String?
+  scientificName  String?
+  description     String?
+  reason          String?
+  additionalInfo  String?
+  sourceUrl       String?
+  
+  status          String   @default("pending") // "pending", "reviewing", "approved", "rejected", "added"
+  adminNotes      String?
+  votes           Int      @default(1)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+}
+
+// ==================== ADMIN AUDIT LOG ====================
+
+model AdminAuditLog {
+  id              String   @id @default(cuid())
+  
+  // Who performed the action
+  adminId         String
+  adminEmail      String
+  
+  // What action was performed
+  action          String   // Admin action type
+  
+  // Who/what was affected
+  targetType      String   // "user", "suggestion", "plant", "seed", etc.
+  targetId        String   // ID of the affected entity
+  targetEmail     String?  // Email if target is a user (for searchability)
+  
+  // Details about the action
+  reason          String?  // Admin-provided reason
+  details         String?  // JSON string with additional details
+  previousState   String?  // JSON of previous state (for reversibility)
+  newState        String?  // JSON of new state
+  
+  // Request metadata
+  ipAddress       String?
+  userAgent       String?
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([adminId])
+  @@index([targetId])
+  @@index([targetEmail])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ==================== ADMIN NOTIFICATION SETTINGS ====================
+
+model AdminNotificationSettings {
+  id                      String   @id @default(cuid())
+  adminEmail              String   @unique  // Admin's email address
+  
+  // User events
+  newUserSignup           Boolean  @default(true)
+  userDeleted             Boolean  @default(false)
+  
+  // Content events
+  newPlantSubmission      Boolean  @default(true)
+  newPlantSuggestion      Boolean  @default(true)
+  newPlantRequest         Boolean  @default(true)
+  
+  // System events
+  dailyDigest             Boolean  @default(false)  // Daily summary email
+  weeklyDigest            Boolean  @default(true)   // Weekly summary email
+  errorAlerts             Boolean  @default(true)   // Critical system errors
+  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+// ==================== PLANTING REMINDER LOGS ====================
+
+// Track sent planting reminders to avoid duplicates
+model PlantingReminderLog {
+  id              String   @id @default(cuid())
+  userId          String
+  
+  // What plants were included in this reminder
+  plantNames      String   // JSON array of plant names included
+  reminderType    String   // "indoor_start" or "direct_sow"
+  targetDate      DateTime // The planting date we're reminding about
+  
+  // Tracking
+  sentAt          DateTime @default(now())
+  year            Int      // Year this reminder was for (to reset annually)
+  
+  @@index([userId])
+  @@index([userId, reminderType, year])
+}
+
+// ==================== CSRF TOKENS ====================
+
+model CsrfToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  sessionId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@index([sessionId])
+  @@index([expiresAt])
+}

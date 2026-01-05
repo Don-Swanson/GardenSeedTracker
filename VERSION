@@ -1,0 +1,6 @@
+# Garden Seed Tracker Version
+
+# This file is used to track the current version of the app for builds and deployments.
+# Update this value before each release or major change.
+
+VERSION=0.1.0

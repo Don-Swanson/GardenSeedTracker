@@ -1,0 +1,29 @@
+# GardenSeedTracker Docker Compose - Development Override
+#
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# This configuration is for local development with hot reloading
+
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: garden-seed-tracker-dev
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=file:/app/data/garden.db
+    volumes:
+      # Mount source code for hot reloading
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+      # Persist database
+      - garden_data_dev:/app/data
+    command: npm run dev
+
+volumes:
+  garden_data_dev:
+    driver: local

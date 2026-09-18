@@ -43,8 +43,9 @@ export function sanitizeString(input: string | null | undefined, maxLength: numb
 }
 
 /**
- * Sanitize a string but preserve some formatting (for display fields)
- * Only encodes dangerous characters, not all HTML
+ * Normalize plain text while preserving newlines and tabs.
+ * This is not an HTML sanitizer: React escapes these display fields, and
+ * callers generating HTML must encode the text at the output boundary.
  */
 export function sanitizeText(input: string | null | undefined, maxLength: number = MAX_LENGTHS.mediumText): string | null {
   if (!input || typeof input !== 'string') return null
@@ -57,11 +58,6 @@ export function sanitizeText(input: string | null | undefined, maxLength: number
   
   // Remove null bytes and control characters
   sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-  
-  // Remove script tags and event handlers
-  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-  sanitized = sanitized.replace(/on\w+\s*=\s*(['"])[^'"]*\1/gi, '')
-  sanitized = sanitized.replace(/javascript:/gi, '')
   
   return sanitized || null
 }
@@ -99,7 +95,7 @@ export function sanitizeEmail(input: string | null | undefined): string | null {
   if (trimmed.length > MAX_LENGTHS.email) return null
   
   // Basic email validation regex
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const emailRegex = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/
   if (!emailRegex.test(trimmed)) {
     return null
   }

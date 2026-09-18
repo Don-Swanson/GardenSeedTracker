@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { 
   Search, 
   MoreVertical, 
@@ -45,7 +45,7 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [editForm, setEditForm] = useState({ name: '', username: '', email: '' })
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({
@@ -64,19 +64,12 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page, search, filter])
 
   useEffect(() => {
-    fetchUsers()
-  }, [page, filter])
-
-  useEffect(() => {
-    const debounce = setTimeout(() => {
-      setPage(1)
-      fetchUsers()
-    }, 300)
-    return () => clearTimeout(debounce)
-  }, [search])
+    const timer = setTimeout(() => { fetchUsers() }, 300)
+    return () => clearTimeout(timer)
+  }, [fetchUsers])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -207,7 +200,7 @@ export default function UsersPage() {
               type="text"
               placeholder="Search by email or name..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
               className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
             />
           </div>

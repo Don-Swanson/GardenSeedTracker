@@ -10,7 +10,7 @@ export default function TermsOfServicePage() {
         <section>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">1. Acceptance of Terms</h2>
           <p className="text-gray-700 dark:text-gray-300">
-            By accessing or using Garden Seed Tracker ("the Service"), you agree to be bound by these 
+            By accessing or using Garden Seed Tracker (&quot;the Service&quot;), you agree to be bound by these
             Terms of Service. If you do not agree to these terms, please do not use the Service.
           </p>
         </section>
@@ -106,7 +106,7 @@ export default function TermsOfServicePage() {
         <section>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">7. Disclaimer of Warranties</h2>
           <p className="text-gray-700 dark:text-gray-300">
-            THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER 
+            THE SERVICE IS PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; WITHOUT WARRANTIES OF ANY KIND, EITHER
             EXPRESS OR IMPLIED. WE DO NOT WARRANT THAT THE SERVICE WILL BE UNINTERRUPTED, ERROR-FREE, 
             OR COMPLETELY SECURE.
           </p>

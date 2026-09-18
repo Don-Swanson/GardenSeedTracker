@@ -319,15 +319,15 @@ export default function ImpersonatePage() {
           </li>
           <li className="flex items-start gap-2">
             <span className="font-bold text-garden-600">2.</span>
-            You'll be redirected to their dashboard view
+            You&apos;ll be redirected to their dashboard view
           </li>
           <li className="flex items-start gap-2">
             <span className="font-bold text-garden-600">3.</span>
-            You'll see a red banner at the top indicating you're impersonating
+            You&apos;ll see a red banner at the top indicating you&apos;re impersonating
           </li>
           <li className="flex items-start gap-2">
             <span className="font-bold text-garden-600">4.</span>
-            Click "Stop Impersonation" to return to your admin session
+            Click &quot;Stop Impersonation&quot; to return to your admin session
           </li>
           <li className="flex items-start gap-2">
             <span className="font-bold text-garden-600">5.</span>

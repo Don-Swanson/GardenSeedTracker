@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { 
   CheckCircle, 
   XCircle, 
@@ -118,7 +118,7 @@ export default function SubmissionsPage() {
   const [editForm, setEditForm] = useState<EditForm | null>(null)
   const [activeEditTab, setActiveEditTab] = useState<'basic' | 'details' | 'uses' | 'growing'>('basic')
 
-  const fetchSubmissions = async () => {
+  const fetchSubmissions = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({ status: filter })
@@ -132,11 +132,12 @@ export default function SubmissionsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filter])
 
   useEffect(() => {
-    fetchSubmissions()
-  }, [filter])
+    const timer = setTimeout(() => { fetchSubmissions() }, 0)
+    return () => clearTimeout(timer)
+  }, [fetchSubmissions])
 
   const handleAction = async (id: string, action: 'approve' | 'reject') => {
     setProcessing(id)

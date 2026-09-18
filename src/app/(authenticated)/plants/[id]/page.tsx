@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
@@ -183,13 +183,7 @@ export default function PlantDetailPage() {
     history: false,
   })
 
-  useEffect(() => {
-    if (id) {
-      fetchPlant()
-    }
-  }, [id])
-
-  const fetchPlant = async () => {
+  const fetchPlant = useCallback(async () => {
     try {
       const response = await fetch(`/api/plants/${id}`)
       if (response.ok) {
@@ -203,7 +197,12 @@ export default function PlantDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, router])
+
+  useEffect(() => {
+    const timer = setTimeout(() => { if (id) fetchPlant() }, 0)
+    return () => clearTimeout(timer)
+  }, [fetchPlant, id])
 
   const parseJsonField = (field: string | string[] | undefined): string[] => {
     if (!field) return []

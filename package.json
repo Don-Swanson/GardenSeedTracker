@@ -6,13 +6,15 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "db:push": "prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "promote-admin": "npx tsx scripts/promote-admin.ts",
     "catalog:import": "tsx scripts/catalog/import.ts",
     "test:catalog": "node --import tsx --test tests/catalog/*.test.ts",
+    "test:email": "node --test tests/email/*.test.mjs",
+    "test:security": "node --import tsx --test tests/security/*.test.ts",
     "db:deploy": "tsx scripts/database/initialize.ts",
     "catalog:import-api": "tsx scripts/catalog/import-api.ts"
   },
@@ -30,6 +32,14 @@
     "resend": "^6.6.0",
     "suncalc": "^1.9.0",
     "zod": "^3.22.4"
+  },
+  "overrides": {
+    "next-auth": {
+      "nodemailer": "$nodemailer"
+    },
+    "@auth/core": {
+      "nodemailer": "$nodemailer"
+    }
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

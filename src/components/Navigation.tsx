@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { 
@@ -130,8 +131,11 @@ export default function Navigation() {
                   className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   {session.user.image && !impersonatedUser ? (
-                    <img
+                    <Image
                       src={session.user.image}
+                      width={32}
+                      height={32}
+                      unoptimized
                       alt={displayUser?.name || 'User'}
                       className="w-8 h-8 rounded-full"
                     />

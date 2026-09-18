@@ -1,0 +1,32 @@
+name: Security and quality
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=moderate
+      - run: npm run lint -- --max-warnings=0
+      - run: npm run test:catalog
+      - run: npm run test:email
+      - run: npm run test:security
+      - run: npm run build
+      - run: npx tsc --noEmit
+      - run: docker build -t gst-catalog-test:local .
+      - run: node tests/catalog/redeploy.mjs

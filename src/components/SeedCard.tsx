@@ -20,7 +20,7 @@ export default function SeedCard({ seed }: SeedCardProps) {
   
   // Check if seeds are expiring soon (within 3 months)
   const isExpiringSoon = seed.expirationDate && 
-    new Date(seed.expirationDate) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+    new Date(seed.expirationDate) < new Date(new Date().getTime() + 90 * 24 * 60 * 60 * 1000)
   const isExpired = seed.expirationDate && new Date(seed.expirationDate) < new Date()
   
   // Check if there's growing info to show

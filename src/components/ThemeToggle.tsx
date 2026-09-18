@@ -1,24 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useSyncExternalStore } from 'react'
 import { Sun, Moon } from 'lucide-react'
 
-export default function ThemeToggle() {
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
-  const [mounted, setMounted] = useState(false)
+const subscribeTheme = (listener: () => void) => {
+  window.addEventListener('storage', listener)
+  window.addEventListener('gst-theme', listener)
+  return () => { window.removeEventListener('storage', listener); window.removeEventListener('gst-theme', listener) }
+}
+const readTheme = () => localStorage.getItem('theme') === 'light' ? 'light' : 'dark'
 
-  useEffect(() => {
-    setMounted(true)
-    const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    }
-  }, [])
+export default function ThemeToggle() {
+  const theme = useSyncExternalStore(subscribeTheme, readTheme, () => null)
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark'
-    setTheme(newTheme)
     localStorage.setItem('theme', newTheme)
+    window.dispatchEvent(new Event('gst-theme'))
     
     if (newTheme === 'dark') {
       document.documentElement.classList.add('dark')
@@ -28,7 +26,7 @@ export default function ThemeToggle() {
   }
 
   // Don't render anything until mounted to avoid hydration mismatch
-  if (!mounted) {
+  if (!theme) {
     return <div className="w-9 h-9" /> // Placeholder to prevent layout shift
   }
 

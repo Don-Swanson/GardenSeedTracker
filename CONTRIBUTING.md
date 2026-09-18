@@ -18,7 +18,9 @@ Thank you for your interest in contributing! We welcome all contributions, inclu
    - For local development, SQLite is used by default.
 4. **Run database migrations:**
    ```sh
-   npx prisma migrate dev --name init
+   export DATABASE_URL="file:$(pwd)/prisma/dev.db"
+   npm run db:deploy
+   npm run db:seed
    ```
 5. **Start the development server:**
    ```sh
@@ -26,6 +28,8 @@ Thank you for your interest in contributing! We welcome all contributions, inclu
    ```
 
 ## Code Standards
+
+For schema changes, generate and review a new Prisma migration in a disposable development database. Production startup applies checked-in migrations; never reset a deployed database. See [database and catalog workflows](docs/plant-catalog.md).
 - Use Prettier and ESLint for formatting and linting.
 - Write clear, descriptive commit messages.
 - Use descriptive variable and function names.

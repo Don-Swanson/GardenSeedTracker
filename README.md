@@ -56,7 +56,9 @@ You can self-host Garden Seed Tracker for personal or community use. All feature
    - For local development, SQLite is used by default.
 4. **Run database migrations:**
    ```sh
-   npx prisma migrate dev --name init
+   export DATABASE_URL="file:$(pwd)/prisma/dev.db"
+   npm run db:deploy
+   npm run db:seed
    ```
 5. **Start the development server:**
    ```sh
@@ -67,7 +69,15 @@ You can self-host Garden Seed Tracker for personal or community use. All feature
 ### Docker
 
 - Development: `docker-compose -f docker-compose.dev.yml up`
-- Production: `docker-compose up -d`
+- Production: `docker compose up -d --build`
+
+Keep the same persistent data directory and environment configuration across redeploys. Set `GST_DATA_DIR` to the absolute path of your existing data directory. Startup backs up SQLite, applies versioned migrations, and seeds only an entirely empty database.
+
+See [plant catalog and persistence](docs/plant-catalog.md) for safe bulk imports, first-install catalog seeding, and backup/restore.
+
+### A Note on Development
+
+This project is, candidly, largely vibe-coded. It is developed with a security-first mindset, receives regular security reviews, and is tested as extensively as practical to catch bugs and prevent it from becoming vibe-coded garbage. That is not a guarantee of perfection: review the code and deployment configuration for your own risk requirements, and report security concerns through the [GitHub issue tracker](https://github.com/Don-Swanson/GardenSeedTracker/issues).
 
 ### Environment Variables
 

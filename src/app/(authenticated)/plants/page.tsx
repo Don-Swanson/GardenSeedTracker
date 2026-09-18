@@ -38,35 +38,35 @@ export default function PlantsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [categories, setCategories] = useState<string[]>([])
 
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [error, setError] = useState('')
+
   useEffect(() => {
-    fetchPlants()
-  }, [])
-
-  const fetchPlants = async () => {
-    try {
-      const response = await fetch('/api/plants')
-      if (response.ok) {
+    const controller = new AbortController()
+    const timer = setTimeout(async () => {
+      setLoading(true)
+      setError('')
+      try {
+        const params = new URLSearchParams({ page: String(page), limit: '48', search: searchTerm, category: selectedCategory })
+        const response = await fetch(`/api/plants?${params}`, { signal: controller.signal })
+        if (!response.ok) throw new Error('Unable to load plants. Please try again.')
         const data = await response.json()
-        setPlants(data)
-        // Extract unique categories
-        const categorySet = new Set<string>()
-        data.forEach((p: Plant) => categorySet.add(p.category))
-        setCategories(Array.from(categorySet))
+        setPlants(data.plants)
+        setTotal(data.total)
+        setTotalPages(data.totalPages)
+        setCategories(data.categories)
+      } catch (error) {
+        if (!controller.signal.aborted) setError(error instanceof Error ? error.message : 'Unable to load plants.')
+      } finally {
+        if (!controller.signal.aborted) setLoading(false)
       }
-    } catch (error) {
-      console.error('Error fetching plants:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+    }, 250)
+    return () => { clearTimeout(timer); controller.abort() }
+  }, [page, searchTerm, selectedCategory])
 
-  const filteredPlants = plants.filter(plant => {
-    const matchesSearch = plant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      plant.scientificName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      plant.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = !selectedCategory || plant.category === selectedCategory
-    return matchesSearch && matchesCategory
-  })
+  const filteredPlants = plants
 
   // Group plants by category
   const groupedPlants = filteredPlants.reduce((acc, plant) => {
@@ -76,13 +76,6 @@ export default function PlantsPage() {
     return acc
   }, {} as Record<string, Plant[]>)
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-garden-600"></div>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-6">
@@ -130,7 +123,7 @@ export default function PlantsPage() {
             type="text"
             placeholder="Search plants by name or description..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => { setSearchTerm(e.target.value); setPage(1) }}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-garden-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           />
         </div>
@@ -138,7 +131,7 @@ export default function PlantsPage() {
           <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <select
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+            onChange={(e) => { setSelectedCategory(e.target.value); setPage(1) }}
             className="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-garden-500 focus:border-transparent appearance-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             <option value="">All Categories</option>
@@ -153,8 +146,14 @@ export default function PlantsPage() {
 
       {/* Results count */}
       <p className="text-sm text-gray-600 dark:text-gray-400">
-        Showing {filteredPlants.length} of {plants.length} plants
+        {loading ? 'Loading plants…' : `${total.toLocaleString()} plants found · Page ${page} of ${Math.max(1, totalPages)}`}
       </p>
+
+      {error && <p role="alert" className="text-red-600">{error}</p>}
+      <div className="flex items-center gap-4">
+        <button type="button" className="btn-secondary" disabled={loading || page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
+        <button type="button" className="btn-secondary" disabled={loading || page >= totalPages} onClick={() => setPage(page + 1)}>Next</button>
+      </div>
 
       {/* Plants by Category */}
       {Object.entries(groupedPlants).map(([category, categoryPlants]) => (
@@ -218,7 +217,7 @@ export default function PlantsPage() {
         </div>
       ))}
 
-      {filteredPlants.length === 0 && (
+      {!loading && !error && filteredPlants.length === 0 && (
         <div className="text-center py-12">
           <Leaf className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">No plants found</h3>

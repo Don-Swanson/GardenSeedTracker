@@ -201,6 +201,10 @@ export const seedCategories = [
   { value: 'fruit', label: 'Fruit', emoji: '🍅' },
   { value: 'herb', label: 'Herb', emoji: '🌿' },
   { value: 'flower', label: 'Flower', emoji: '🌸' },
+  { value: 'tree', label: 'Tree', emoji: '🌳' },
+  { value: 'shrub', label: 'Shrub', emoji: '🌿' },
+  { value: 'grass', label: 'Grass', emoji: '🌾' },
+  { value: 'other', label: 'Other', emoji: '🌱' },
 ]
 
 // Sun requirements

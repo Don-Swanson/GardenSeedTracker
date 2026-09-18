@@ -25,7 +25,7 @@ print_help() {
     echo "  stop        Stop all containers"
     echo "  logs        Show container logs"
     echo "  shell       Open shell in running container"
-    echo "  db-push     Run Prisma db push in container"
+    echo "  db-deploy   Apply versioned database migrations in container"
     echo "  db-seed     Run database seed in container"
     echo "  clean       Remove containers, volumes, and images"
     echo "  help        Show this help message"
@@ -75,14 +75,14 @@ case "$1" in
         docker-compose exec app sh
         ;;
     
-    db-push)
-        echo -e "${GREEN}Running Prisma db push...${NC}"
-        docker-compose exec app npx prisma db push
+    db-deploy|db-push)
+        echo -e "${GREEN}Applying database migrations...${NC}"
+        docker-compose exec app npm run db:deploy
         ;;
     
     db-seed)
         echo -e "${GREEN}Running database seed...${NC}"
-        docker-compose exec app npx prisma db seed
+        docker-compose exec app npm run db:seed
         ;;
     
     clean)

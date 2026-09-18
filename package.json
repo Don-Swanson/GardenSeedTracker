@@ -17,14 +17,14 @@
     "catalog:import-api": "tsx scripts/catalog/import-api.ts"
   },
   "dependencies": {
-    "@auth/prisma-adapter": "^2.11.1",
+    "@auth/prisma-adapter": "^2.11.3",
     "@prisma/client": "6.8.2",
     "bcryptjs": "^2.4.3",
     "date-fns": "^2.30.0",
     "lucide-react": "^0.294.0",
-    "next": "^16.2.12",
+    "next": "^16.3.5",
     "next-auth": "^4.24.15",
-    "nodemailer": "^7.0.13",
+    "nodemailer": "^9.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "resend": "^6.6.0",

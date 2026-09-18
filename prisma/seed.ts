@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client'
+import { readCatalog, importRecords } from '../scripts/catalog/importer'
+import { seedIfEmpty } from '../scripts/database/seed-if-empty'
 
 const prisma = new PrismaClient()
 
@@ -652,20 +654,12 @@ const plantingGuides = [
 ]
 
 async function main() {
-  console.log('Start seeding...')
-  
-  // Clear existing data
-  await prisma.plantingGuide.deleteMany()
-  
-  // Insert planting guides
-  for (const guide of plantingGuides) {
-    const result = await prisma.plantingGuide.create({
-      data: guide,
-    })
-    console.log(`Created planting guide: ${result.name}`)
-  }
-  
-  console.log('Seeding finished.')
+  const seeded = await seedIfEmpty(prisma, async (tx) => {
+    const catalog = process.env.GST_CATALOG_PATH ? readCatalog(process.env.GST_CATALOG_PATH) : []
+    await tx.plantingGuide.createMany({ data: plantingGuides })
+    if (catalog.length) console.log(await importRecords(tx, catalog, false))
+  })
+  console.log(seeded ? 'Empty database initialized.' : 'Database contains data; seeding skipped. Nothing was changed.')
 }
 
 main()

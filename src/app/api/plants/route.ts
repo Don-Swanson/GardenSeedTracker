@@ -7,6 +7,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
     const search = searchParams.get('search')?.toLowerCase()
+    const paginated = searchParams.has('page')
+    const page = Math.max(1, Math.floor(Number(searchParams.get('page')) || 1))
+    const limit = Math.min(100, Math.max(1, Math.floor(Number(searchParams.get('limit')) || 48)))
+    if (!Number.isSafeInteger(page) || !Number.isSafeInteger(limit) || !Number.isSafeInteger((page - 1) * limit)) {
+      return NextResponse.json({ error: 'Invalid pagination' }, { status: 400 })
+    }
     
     const where: any = {
       isApproved: true,
@@ -22,12 +28,14 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { name: { contains: search } },
         { scientificName: { contains: search } },
+        { commonNames: { contains: search } },
         { description: { contains: search } },
       ]
     }
     
     const plants = await prisma.plantingGuide.findMany({
       where,
+      ...(paginated ? { skip: (page - 1) * limit, take: limit } : {}),
       orderBy: [
         { category: 'asc' },
         { name: 'asc' },
@@ -48,7 +56,12 @@ export async function GET(request: NextRequest) {
       },
     })
     
-    return NextResponse.json(plants)
+    if (!paginated) return NextResponse.json(plants)
+    const [total, categories] = await Promise.all([
+      prisma.plantingGuide.count({ where }),
+      prisma.plantingGuide.findMany({ where: { isApproved: true }, distinct: ['category'], select: { category: true }, orderBy: { category: 'asc' } }),
+    ])
+    return NextResponse.json({ plants, total, page, totalPages: Math.ceil(total / limit), categories: categories.map(item => item.category) })
   } catch (error) {
     console.error('Error fetching plants:', error)
     return NextResponse.json(

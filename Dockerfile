@@ -15,6 +15,7 @@ RUN npm install
 
 # ==================== Builder Stage ====================
 FROM node:20-alpine AS builder
+ARG VERSION
 # Install OpenSSL for Prisma
 RUN apk add --no-cache openssl openssl-dev libc6-compat
 WORKDIR /app
@@ -38,7 +39,7 @@ LABEL org.opencontainers.image.version=${VERSION}
 # ==================== Runner Stage ====================
 FROM node:20-alpine AS runner
 # Install OpenSSL for Prisma runtime
-RUN apk add --no-cache openssl libc6-compat
+RUN apk add --no-cache openssl libc6-compat sqlite
 WORKDIR /app
 
 # Set environment
@@ -68,35 +69,17 @@ COPY --from=builder /app/node_modules/esbuild ./node_modules/esbuild
 COPY --from=builder /app/node_modules/@esbuild ./node_modules/@esbuild
 COPY --from=builder /app/node_modules/get-tsconfig ./node_modules/get-tsconfig
 COPY --from=builder /app/node_modules/resolve-pkg-maps ./node_modules/resolve-pkg-maps
+COPY --from=builder /app/node_modules/zod ./node_modules/zod
 
 # Create data directory for SQLite
 # Note: The volume mount will override this, but we need the directory structure
 RUN mkdir -p /app/data && chown -R nextjs:nodejs /app/data
 
-# Create entrypoint script to initialize database and seed if empty
-RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
-    echo 'set -e' >> /app/entrypoint.sh && \
-    echo '' >> /app/entrypoint.sh && \
-    echo '# Ensure data directory exists and has correct permissions' >> /app/entrypoint.sh && \
-    echo 'if [ ! -w /app/data ]; then' >> /app/entrypoint.sh && \
-    echo '  echo "ERROR: /app/data is not writable. Please ensure the volume has correct permissions."' >> /app/entrypoint.sh && \
-    echo '  echo "Run: docker volume rm garden-seed-tracker_garden_data && docker-compose up -d"' >> /app/entrypoint.sh && \
-    echo '  exit 1' >> /app/entrypoint.sh && \
-    echo 'fi' >> /app/entrypoint.sh && \
-    echo '' >> /app/entrypoint.sh && \
-    echo 'echo "Initializing database..."' >> /app/entrypoint.sh && \
-    echo 'node /app/node_modules/prisma/build/index.js db push --skip-generate' >> /app/entrypoint.sh && \
-    echo 'echo "Checking if database needs seeding..."' >> /app/entrypoint.sh && \
-    echo 'if [ ! -f /app/data/.seeded ]; then' >> /app/entrypoint.sh && \
-    echo '  echo "Running database seed..."' >> /app/entrypoint.sh && \
-    echo '  node /app/node_modules/tsx/dist/cli.mjs prisma/seed.ts && touch /app/data/.seeded || echo "Seed failed, continuing..."' >> /app/entrypoint.sh && \
-    echo 'else' >> /app/entrypoint.sh && \
-    echo '  echo "Database already seeded"' >> /app/entrypoint.sh && \
-    echo 'fi' >> /app/entrypoint.sh && \
-    echo 'echo "Database ready!"' >> /app/entrypoint.sh && \
-    echo 'exec node server.js' >> /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh && \
-    chown nextjs:nodejs /app/entrypoint.sh
+# Keep startup and import tools reviewable and available in the production image.
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/src/lib/catalog-import.ts ./src/lib/catalog-import.ts
+COPY --from=builder /app/scripts/docker-entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # Switch to non-root user
 USER nextjs

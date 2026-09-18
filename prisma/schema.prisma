@@ -271,6 +271,13 @@ model PlantingGuide {
   subcategory           String?
   scientificName        String?
   description           String?
+  commonNames           String?  // Other source names, searchable without merging distinct species
+  sourceName            String?
+  sourceId              String?
+  sourceUrl             String?
+  sourceLicense         String?
+  sourceRetrievedAt     DateTime?
+  sourceData            String?  // Original source fields, references and extraction metadata (JSON)
   
   // Detailed information
   generalInfo           String?  // Extended description and history
@@ -352,6 +359,10 @@ model PlantingGuide {
   seeds                 Seed[]
   wishlistItems         WishlistItem[]
   suggestions           PlantSuggestion[]
+
+  @@unique([sourceName, sourceId])
+  @@index([scientificName])
+  @@index([category, name])
 }
 
 // ==================== PLANT SUGGESTIONS ====================

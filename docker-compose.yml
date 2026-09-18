@@ -8,9 +8,9 @@
 
 services:
   app:
-    #build:
-    #  context: .
-    #  dockerfile: Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: gardenseedtracker
     container_name: garden-seed-tracker
     restart: unless-stopped
@@ -18,6 +18,8 @@ services:
       - 3000
     environment:
       # Database
+      - GST_CATALOG_PATH=${GST_CATALOG_PATH:-}
+      - ADMIN_API_KEY=${ADMIN_API_KEY:-}
       - DATABASE_URL=file:/app/data/garden.db
       
       # NextAuth Configuration
@@ -43,7 +45,7 @@ services:
 
     volumes:
       # Persist SQLite database
-      - ./data:/app/data
+      - ${GST_DATA_DIR:-./data}:/app/data
     # Run as root initially to fix volume permissions, then drop to nextjs user
     user: "0:0"
     command: >

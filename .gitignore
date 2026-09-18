@@ -35,7 +35,6 @@ prisma/*.db-journal
 /data/
 
 # Prisma
-prisma/migrations/**/migration_lock.toml
 
 # Debug logs
 npm-debug.log*
@@ -97,3 +96,11 @@ temp/
 # Local development
 *.local
 .env
+
+# SQLite sidecars and Python cache
+*.db-wal
+*.db-shm
+__pycache__/
+
+# Private catalog collectors, provider caches, credentials, and generated exports
+/.gst-private/

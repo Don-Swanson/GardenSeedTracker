@@ -12,7 +12,7 @@ import {
 } from '@/lib/validation'
 import { notifyAdmins } from '@/lib/admin-notifications'
 
-const VALID_CATEGORIES = ['vegetable', 'herb', 'flower', 'fruit', 'tree', 'shrub', 'vine', 'grass'] as const
+const VALID_CATEGORIES = ['vegetable', 'herb', 'flower', 'fruit', 'tree', 'shrub', 'vine', 'grass', 'other'] as const
 const VALID_SUN = ['full sun', 'partial shade', 'full shade', 'partial sun'] as const
 const VALID_WATER = ['low', 'moderate', 'high'] as const
 

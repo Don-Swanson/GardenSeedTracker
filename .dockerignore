@@ -51,3 +51,12 @@ docs/
 *.log
 *.md
 !package.json
+
+# Persistent data and collector caches never belong in an application image
+data/
+*.db-wal
+*.db-shm
+__pycache__/
+
+# Local API import credentials
+.env*.local

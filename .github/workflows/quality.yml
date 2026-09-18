@@ -25,6 +25,7 @@ jobs:
       - run: npm run lint -- --max-warnings=0
       - run: npm run test:catalog
       - run: npm run test:email
+      - run: npm run test:security
       - run: npm run build
       - run: npx tsc --noEmit
       - run: docker build -t gst-catalog-test:local .

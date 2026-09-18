@@ -338,6 +338,10 @@ export default async function AlmanacPage() {
   }
   
   const plantingGuides: PlantGuide[] = await prisma.plantingGuide.findMany({
+    where: { isApproved: true, OR: [
+      { indoorStartWeeks: { not: null } }, { outdoorStartWeeks: { not: null } },
+      { transplantWeeks: { not: null } }, { optimalZones: { not: null } },
+    ] },
     orderBy: { name: 'asc' },
     select: {
       id: true,
@@ -395,7 +399,7 @@ export default async function AlmanacPage() {
              (plant.transplantWeeks !== null && plant.transplantWeeks !== undefined)
     } else {
       // Fall - show cool weather crops or perennials for next year
-      return plant.category === 'Vegetable' || plant.category === 'Herb'
+      return plant.category === 'vegetable' || plant.category === 'herb'
     }
   }).slice(0, 12) // Limit to 12 plants
 

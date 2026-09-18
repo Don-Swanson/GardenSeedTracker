@@ -37,6 +37,7 @@ export default function PlantsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [categories, setCategories] = useState<string[]>([])
+  const [sort, setSort] = useState('popular')
 
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
@@ -49,7 +50,7 @@ export default function PlantsPage() {
       setLoading(true)
       setError('')
       try {
-        const params = new URLSearchParams({ page: String(page), limit: '48', search: searchTerm, category: selectedCategory })
+        const params = new URLSearchParams({ page: String(page), limit: '48', search: searchTerm, category: selectedCategory, sort })
         const response = await fetch(`/api/plants?${params}`, { signal: controller.signal })
         if (!response.ok) throw new Error('Unable to load plants. Please try again.')
         const data = await response.json()
@@ -64,17 +65,13 @@ export default function PlantsPage() {
       }
     }, 250)
     return () => { clearTimeout(timer); controller.abort() }
-  }, [page, searchTerm, selectedCategory])
+  }, [page, searchTerm, selectedCategory, sort])
 
   const filteredPlants = plants
 
   // Group plants by category
-  const groupedPlants = filteredPlants.reduce((acc, plant) => {
-    const cat = plant.category
-    if (!acc[cat]) acc[cat] = []
-    acc[cat].push(plant)
-    return acc
-  }, {} as Record<string, Plant[]>)
+  // Preserve the API ranking rather than regrouping popular plants by category.
+  const groupedPlants = { plants: filteredPlants }
 
 
   return (
@@ -117,6 +114,10 @@ export default function PlantsPage() {
 
       {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row gap-4">
+        <select aria-label="Sort plants" value={sort} onChange={event => { setSort(event.target.value); setPage(1) }} className="border rounded-lg px-3 py-2 bg-white dark:bg-gray-800 dark:text-white">
+          <option value="popular">Most popular</option>
+          <option value="name">Name A–Z</option>
+        </select>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
@@ -145,6 +146,7 @@ export default function PlantsPage() {
       </div>
 
       {/* Results count */}
+      {sort === 'popular' && <p className="text-sm text-gray-600 dark:text-gray-400">Popularity reflects gardeners with each plant in active inventory or on their wishlist.</p>}
       <p className="text-sm text-gray-600 dark:text-gray-400">
         {loading ? 'Loading plants…' : `${total.toLocaleString()} plants found · Page ${page} of ${Math.max(1, totalPages)}`}
       </p>
@@ -160,7 +162,7 @@ export default function PlantsPage() {
         <div key={category} className="space-y-4">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2 capitalize">
             {categoryIcons[category] || <Leaf className="w-5 h-5" />}
-            {category}s
+            Plants
             <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
               ({categoryPlants.length})
             </span>

@@ -4,7 +4,7 @@ import { Sun, Droplets, Calendar, Package } from 'lucide-react'
 import { formatDate, seedCategories } from '@/lib/garden-utils'
 
 interface SeedWithPlantings extends Seed {
-  plantType?: PlantingGuide | null
+  plantType?: Omit<PlantingGuide, 'sourceData'> | null
   plantings: (Planting & { plantingEvents?: PlantingEvent[] })[]
 }
 

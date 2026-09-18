@@ -45,7 +45,7 @@ export default async function SeedsPage({ searchParams }: PageProps) {
     where,
     orderBy: { createdAt: 'desc' },
     include: {
-      plantType: true,
+      plantType: { omit: { sourceData: true } },
       plantings: {
         orderBy: { createdAt: 'desc' },
         take: 1,

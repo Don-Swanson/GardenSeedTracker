@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { popularPlantIds } from '@/lib/plant-popularity'
 
 // GET /api/plants - List all plants
 export async function GET(request: NextRequest) {
@@ -8,6 +9,8 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category')
     const search = searchParams.get('search')?.toLowerCase()
     const paginated = searchParams.has('page')
+    const sort = searchParams.get('sort') || (paginated ? 'popular' : 'name')
+    if (!['popular', 'name'].includes(sort)) return NextResponse.json({ error: 'Invalid sort' }, { status: 400 })
     const page = Math.max(1, Math.floor(Number(searchParams.get('page')) || 1))
     const limit = Math.min(100, Math.max(1, Math.floor(Number(searchParams.get('limit')) || 48)))
     if (!Number.isSafeInteger(page) || !Number.isSafeInteger(limit) || !Number.isSafeInteger((page - 1) * limit)) {
@@ -33,12 +36,13 @@ export async function GET(request: NextRequest) {
       ]
     }
     
-    const plants = await prisma.plantingGuide.findMany({
-      where,
-      ...(paginated ? { skip: (page - 1) * limit, take: limit } : {}),
+    const ranked = sort === 'popular' ? await popularPlantIds(prisma, { search, category: category || undefined, limit, offset: (page - 1) * limit }) : null
+    const rows = await prisma.plantingGuide.findMany({
+      where: ranked ? { id: { in: ranked.map(row => row.id) } } : where,
+      ...(ranked ? {} : { skip: (page - 1) * limit, take: limit }),
       orderBy: [
-        { category: 'asc' },
         { name: 'asc' },
+        { id: 'asc' },
       ],
       select: {
         id: true,
@@ -55,6 +59,8 @@ export async function GET(request: NextRequest) {
         imageUrl: true,
       },
     })
+    const byId = new Map(rows.map(row => [row.id, row]))
+    const plants = ranked ? ranked.map(row => byId.get(row.id)!) : rows
     
     if (!paginated) return NextResponse.json(plants)
     const [total, categories] = await Promise.all([

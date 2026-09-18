@@ -24,12 +24,12 @@ async function getDashboardData(userId: string) {
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 5,
-      include: { plantType: true },
+      include: { plantType: { omit: { sourceData: true } } },
     }),
     prisma.planting.findMany({
       where: { userId },
       include: { 
-        seed: { include: { plantType: true } },
+        seed: { include: { plantType: { omit: { sourceData: true } } } },
         plantingEvents: { orderBy: { date: 'desc' }, take: 1 },
         location: true,
       },

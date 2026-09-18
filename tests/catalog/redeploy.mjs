@@ -42,7 +42,7 @@ try {
   await start('/app/data/catalog.json')
   const unauthenticated = JSON.parse(js(`(async()=>{const r=await fetch('http://127.0.0.1:3000/calendar',{redirect:'manual'});console.log(JSON.stringify({status:r.status,location:r.headers.get('location')}))})().catch(e=>{console.error(e);process.exit(1)})`))
   assert.equal(unauthenticated.status, 307)
-  assert.ok(new URL(unauthenticated.location).pathname === '/auth/signin')
+  assert.ok(new URL(unauthenticated.location, 'http://127.0.0.1:3000').pathname === '/auth/signin')
   console.log('PASS: proxy requires authentication for the calendar')
   js(`const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();(async()=>{const plant=await p.plantingGuide.findFirstOrThrow();await p.plantingGuide.update({where:{id:plant.id},data:{notes:'USER EDIT: keep across deployments'}});await p.user.create({data:{email:'persistence@example.test',settings:{create:{zipCode:'55555',reminderLeadDays:19}},seeds:{create:{plantTypeId:plant.id,nickname:'Preserve linked inventory'}}}});await p.adminNotificationSettings.create({data:{adminEmail:'persistence@example.test',weeklyDigest:false}});await p.$disconnect()})().catch(e=>{console.error(e);process.exit(1)})`)
   const before = snapshot()

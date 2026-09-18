@@ -391,7 +391,7 @@ export default function EditSeedPage() {
                       >
                         <Plus className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                         <span className="text-amber-900 dark:text-amber-100 font-semibold">
-                          Add "{plantSearch}" as custom plant type
+                          Add &quot;{plantSearch}&quot; as custom plant type
                         </span>
                       </button>
                     )}

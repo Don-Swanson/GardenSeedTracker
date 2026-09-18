@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { 
   Shield, 
   Users, 
@@ -38,7 +38,7 @@ export default function AdminLayout({
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
-  const [isAuthorized, setIsAuthorized] = useState(false)
+  const isAuthorized = status === 'authenticated' && session?.user.role === 'admin'
 
   useEffect(() => {
     if (status === 'loading') return
@@ -53,7 +53,6 @@ export default function AdminLayout({
       return
     }
 
-    setIsAuthorized(true)
   }, [session, status, router])
 
   if (status === 'loading') {
@@ -70,7 +69,7 @@ export default function AdminLayout({
         <div className="text-center">
           <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Access Denied</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">You don't have permission to access admin pages.</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">You don&apos;t have permission to access admin pages.</p>
           <Link href="/dashboard" className="btn btn-primary">
             Return to Dashboard
           </Link>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { 
   Search, 
   Plus, 
@@ -103,7 +103,7 @@ export default function PlantsPage() {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
   }
 
-  const fetchPlants = async () => {
+  const fetchPlants = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({
@@ -123,19 +123,12 @@ export default function PlantsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page, search, category])
 
   useEffect(() => {
-    fetchPlants()
-  }, [page, category])
-
-  useEffect(() => {
-    const debounce = setTimeout(() => {
-      setPage(1)
-      fetchPlants()
-    }, 300)
-    return () => clearTimeout(debounce)
-  }, [search])
+    const timer = setTimeout(() => { fetchPlants() }, 300)
+    return () => clearTimeout(timer)
+  }, [fetchPlants])
 
   const handleSavePlant = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -931,7 +924,7 @@ export default function PlantsPage() {
               type="text"
               placeholder="Search plants..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
               className="input pl-10"
             />
           </div>

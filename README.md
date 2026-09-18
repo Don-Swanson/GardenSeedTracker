@@ -73,7 +73,7 @@ You can self-host Garden Seed Tracker for personal or community use. All feature
 
 Keep the same persistent data directory and environment configuration across redeploys. Set `GST_DATA_DIR` to the absolute path of your existing data directory. Startup backs up SQLite, applies versioned migrations, and seeds only an entirely empty database.
 
-See [plant catalog and persistence](docs/plant-catalog.md) for safe bulk imports, first-install catalog seeding, and backup/restore. The proposed Perenual catalog builder is specified in [the implementation plan](docs/perenual-import-plan.md).
+See [plant catalog and persistence](docs/plant-catalog.md) for safe bulk imports, first-install catalog seeding, and backup/restore.
 
 ### A Note on Development
 

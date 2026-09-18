@@ -425,4 +425,3 @@ CREATE INDEX "CsrfToken_sessionId_idx" ON "CsrfToken"("sessionId");
 
 -- CreateIndex
 CREATE INDEX "CsrfToken_expiresAt_idx" ON "CsrfToken"("expiresAt");
-

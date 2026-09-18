@@ -15,4 +15,3 @@ CREATE INDEX "PlantingGuide_category_name_idx" ON "PlantingGuide"("category", "n
 
 -- CreateIndex
 CREATE UNIQUE INDEX "PlantingGuide_sourceName_sourceId_key" ON "PlantingGuide"("sourceName", "sourceId");
-

@@ -3,9 +3,7 @@ const nextConfig = {
   // Enable standalone output for Docker deployment
   output: 'standalone',
   
-  experimental: {
-    serverComponentsExternalPackages: ['@prisma/client'],
-  },
+  serverExternalPackages: ['@prisma/client'],
   
   // Security headers
   async headers() {

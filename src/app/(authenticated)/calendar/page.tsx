@@ -3,10 +3,15 @@ import { getAuthSession } from '@/lib/auth'
 import { hardinessZones, parseFrostDate, calculatePlantingDates, seedCategories } from '@/lib/garden-utils'
 import { format, addWeeks } from 'date-fns'
 import Link from 'next/link'
-import { Thermometer, Package, Star, Layers } from 'lucide-react'
+import { Thermometer, Package, Star } from 'lucide-react'
 import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
+
+const calendarGuideSelect = {
+  id: true, name: true, category: true, indoorStartWeeks: true, outdoorStartWeeks: true,
+  transplantWeeks: true, harvestWeeks: true, minGerminationTemp: true, optGerminationTemp: true,
+} as const
 
 const months = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -28,16 +33,18 @@ interface PlantingCalendarItem {
   harvestDate: Date | null
   minGerminationTemp?: number | null
   optGerminationTemp?: number | null
-  source: 'encyclopedia' | 'inventory' | 'wishlist'
+  source: 'inventory' | 'wishlist'
 }
 
 export default async function CalendarPage({ searchParams }: PageProps) {
   const session = await getAuthSession()
   
   const userId = session?.user?.id
+  if (!userId) redirect('/auth/signin')
   
   const params = await searchParams
-  const { category, view = 'all' } = params
+  const { category } = params
+  const view = params.view === 'inventory-wishlist' ? 'inventory-wishlist' : 'inventory'
 
   // Get user-specific settings if logged in, otherwise use defaults
   const settings = userId ? await prisma.userSettings.findFirst({ where: { userId } }) : null
@@ -54,49 +61,14 @@ export default async function CalendarPage({ searchParams }: PageProps) {
 
   let plantingCalendar: PlantingCalendarItem[] = []
 
-  if (view === 'all') {
-    // Get all planting guides from encyclopedia
-    const where: Record<string, unknown> = {}
-    if (category && category !== 'all') {
-      where.category = category
-    }
-
-    const plantingGuides = await prisma.plantingGuide.findMany({
-      where,
-      orderBy: { name: 'asc' },
-    })
-
-    plantingCalendar = plantingGuides.map((guide: { id: string; name: string; category: string; indoorStartWeeks: number | null; outdoorStartWeeks: number | null; transplantWeeks: number | null; harvestWeeks: number | null; minGerminationTemp: number | null; optGerminationTemp: number | null }) => {
-      const dates = lastFrost ? calculatePlantingDates(
-        lastFrost,
-        guide.indoorStartWeeks,
-        guide.outdoorStartWeeks,
-        guide.transplantWeeks
-      ) : { indoorStart: null, outdoorStart: null, transplant: null }
-
-      const harvestDate = dates.outdoorStart && guide.harvestWeeks
-        ? addWeeks(dates.outdoorStart, guide.harvestWeeks)
-        : null
-
-      return {
-        id: guide.id,
-        name: guide.name,
-        category: guide.category,
-        ...dates,
-        harvestDate,
-        minGerminationTemp: guide.minGerminationTemp,
-        optGerminationTemp: guide.optGerminationTemp,
-        source: 'encyclopedia' as const,
-      }
-    })
-  } else if (view === 'inventory' || view === 'inventory-wishlist') {
+  {
     // Get user's seeds from inventory
     const seeds = await prisma.seed.findMany({
       where: { 
         userId,
         isArchived: false,
       },
-      include: { plantType: true },
+      include: { plantType: { select: calendarGuideSelect } },
     })
 
     // Build calendar from inventory seeds
@@ -137,7 +109,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
           userId,
           purchased: false,
         },
-        include: { plantType: true },
+        include: { plantType: { select: calendarGuideSelect } },
       })
 
       const wishlistCalendar: PlantingCalendarItem[] = wishlistItems
@@ -240,6 +212,9 @@ export default async function CalendarPage({ searchParams }: PageProps) {
                 {' • '}
                 First Fall Frost: {firstFrost ? format(firstFrost, 'MMMM d') : 'Not set'}
               </p>
+              {(!settings?.lastFrostDate || !settings?.firstFrostDate) && (
+                <p className="text-sm text-garden-700 dark:text-garden-300">Zone-based frost dates are approximate. Set local frost dates in Settings for better timing.</p>
+              )}
             </div>
           </div>
           <Link href="/settings" className="btn btn-primary w-fit">
@@ -252,17 +227,6 @@ export default async function CalendarPage({ searchParams }: PageProps) {
       <div className="card">
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">View Plants From:</h3>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/calendar?view=all${category ? `&category=${category}` : ''}`}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-              view === 'all'
-                ? 'bg-garden-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            All Plants
-          </Link>
           <Link
             href={`/calendar?view=inventory${category ? `&category=${category}` : ''}`}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
@@ -488,6 +452,9 @@ export default async function CalendarPage({ searchParams }: PageProps) {
                     )}
                   </div>
                   <div className="space-y-2 text-sm">
+                    {!crop.indoorStart && !crop.outdoorStart && !crop.transplant && !crop.harvestDate && (
+                      <p className="text-gray-500 dark:text-gray-400">Planting dates are not available yet. Check the seed packet and local growing guidance.</p>
+                    )}
                     {crop.indoorStart && (
                       <div className="flex justify-between">
                         <span className="text-purple-600 dark:text-purple-400">Start Indoors:</span>
@@ -506,7 +473,7 @@ export default async function CalendarPage({ searchParams }: PageProps) {
                         <span className="font-medium">{format(crop.transplant, 'MMM d')}</span>
                       </div>
                     )}
-                    {crop.harvestDate && (
+        {crop.harvestDate && (
                       <div className="flex justify-between">
                         <span className="text-amber-600 dark:text-amber-400">Harvest:</span>
                         <span className="font-medium">{format(crop.harvestDate, 'MMM d')}</span>

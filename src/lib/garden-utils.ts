@@ -117,7 +117,7 @@ export function calculatePlantingDates(
   transplant: Date | null
 } {
   return {
-    indoorStart: indoorStartWeeks ? addWeeks(lastFrostDate, -indoorStartWeeks) : null,
+    indoorStart: indoorStartWeeks !== null ? addWeeks(lastFrostDate, -indoorStartWeeks) : null,
     outdoorStart: outdoorStartWeeks !== null ? addWeeks(lastFrostDate, outdoorStartWeeks) : null,
     transplant: transplantWeeks !== null ? addWeeks(lastFrostDate, transplantWeeks) : null,
   }

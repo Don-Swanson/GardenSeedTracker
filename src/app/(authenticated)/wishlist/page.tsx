@@ -26,7 +26,7 @@ export default async function WishlistPage({ searchParams }: PageProps) {
       { priority: 'asc' },
       { createdAt: 'desc' },
     ],
-    include: { plantType: true },
+    include: { plantType: { omit: { sourceData: true } } },
   })
 
   const purchasedCount = await prisma.wishlistItem.count({

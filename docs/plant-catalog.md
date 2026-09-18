@@ -45,6 +45,8 @@ Collectors produce a source-neutral JSON document:
 
 Each record carries a provider name, stable provider ID, public HTTPS source page, retrieval time, license or permission label, and source evidence. API secrets must never appear in source URLs, output, logs, checkpoints, or raw evidence.
 
+Reviewed timing enrichment can supply `indoorStartWeeks` (weeks before last frost), signed `outdoorStartWeeks` and `transplantWeeks` (relative to last frost), and positive `harvestWeeks` (from direct sowing). Leave unsupported values absent. These legacy single-date fields do not express regional windows, stratification, cultivar-specific maturity basis, or years to bearing; retain those distinctions in source evidence instead of flattening them into misleading numbers.
+
 The importer validates the entire document before writing. It matches exact source identity first and normalized scientific name second. It never merges on a common name alone. Distinct taxa with the same display name receive a scientific-name suffix. Ambiguous matches are reported for review.
 
 The current version can attach one provider record directly to each plant. The multi-source design in [the Perenual import plan](perenual-import-plan.md) moves provenance into related records before providers are blended.

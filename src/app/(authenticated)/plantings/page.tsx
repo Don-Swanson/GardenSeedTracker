@@ -30,7 +30,7 @@ export default async function PlantingsPage({ searchParams }: PageProps) {
   const plantings = await prisma.planting.findMany({
     where,
     include: { 
-      seed: { include: { plantType: true } },
+      seed: { include: { plantType: { omit: { sourceData: true } } } },
       plantingEvents: {
         orderBy: { date: 'desc' },
       },

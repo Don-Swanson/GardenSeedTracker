@@ -11,6 +11,7 @@ export async function GET(
     
     const plant = await prisma.plantingGuide.findUnique({
       where: { id },
+      omit: { sourceData: true },
       include: {
         submittedBy: {
           select: {

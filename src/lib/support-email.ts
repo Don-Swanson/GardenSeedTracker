@@ -72,27 +72,27 @@ export function generateConfirmationEmailHtml(params: {
   <div style="background: linear-gradient(135deg, #2d5016 0%, #4a7c23 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
     <h1 style="color: white; margin: 0; font-size: 24px;">🌱 Garden Seed Tracker</h1>
   </div>
-  
+
   <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
     <h2 style="color: #2d5016; margin-top: 0;">Hi ${userName}!</h2>
-    
+
     <p>Thank you for contacting us. We've received your support request and will get back to you as soon as possible.</p>
-    
+
     <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4a7c23;">
       <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">${category}</p>
       <h3 style="margin: 0 0 10px 0; color: #333;">${subject}</h3>
       <div style="white-space: pre-wrap; color: #666; font-size: 14px;">${message}</div>
     </div>
-    
+
     <p style="color: #888; font-size: 14px;">
       We typically respond within 1-2 business days. If your request is urgent, please reply to this email with additional details.
     </p>
-    
+
     <p style="color: #888; font-size: 14px; margin-top: 30px;">
       Happy gardening! 🌻
     </p>
   </div>
-  
+
   <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
     <p>This is an automated confirmation email from Garden Seed Tracker.</p>
   </div>

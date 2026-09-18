@@ -38,6 +38,9 @@ export default function PlantsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [categories, setCategories] = useState<string[]>([])
   const [sort, setSort] = useState('popular')
+  const [sunlight, setSunlight] = useState('')
+  const [zone, setZone] = useState('')
+  const [water, setWater] = useState('')
 
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
@@ -50,7 +53,7 @@ export default function PlantsPage() {
       setLoading(true)
       setError('')
       try {
-        const params = new URLSearchParams({ page: String(page), limit: '48', search: searchTerm, category: selectedCategory, sort })
+        const params = new URLSearchParams({ page: String(page), limit: '48', search: searchTerm, category: selectedCategory, sort, sunlight, zone, water })
         const response = await fetch(`/api/plants?${params}`, { signal: controller.signal })
         if (!response.ok) throw new Error('Unable to load plants. Please try again.')
         const data = await response.json()
@@ -65,7 +68,7 @@ export default function PlantsPage() {
       }
     }, 250)
     return () => { clearTimeout(timer); controller.abort() }
-  }, [page, searchTerm, selectedCategory, sort])
+  }, [page, searchTerm, selectedCategory, sort, sunlight, zone, water])
 
   const filteredPlants = plants
 
@@ -146,6 +149,34 @@ export default function PlantsPage() {
       </div>
 
       {/* Results count */}
+      <div className="card space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sunlight
+            <select value={sunlight} onChange={event => { setSunlight(event.target.value); setPage(1) }} className="mt-1 w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-800">
+              <option value="">Any sunlight</option>
+              <option value="full-sun">Full sun</option>
+              <option value="part-shade">Partial sun / shade</option>
+              <option value="full-shade">Full shade</option>
+            </select>
+          </label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">USDA hardiness zone
+            <select value={zone} onChange={event => { setZone(event.target.value); setPage(1) }} className="mt-1 w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-800">
+              <option value="">Any zone</option>
+              {Array.from({ length: 13 }, (_, index) => index + 1).flatMap(number => ['a', 'b'].map(half => <option key={`${number}${half}`} value={`${number}${half}`}>{number}{half}</option>))}
+            </select>
+          </label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Watering
+            <select value={water} onChange={event => { setWater(event.target.value); setPage(1) }} className="mt-1 w-full border rounded-lg px-3 py-2 bg-white dark:bg-gray-800">
+              <option value="">Any watering</option>
+              <option value="low">Low / minimal</option>
+              <option value="average">Average / moderate</option>
+              <option value="frequent">Frequent / high</option>
+            </select>
+          </label>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Plants must match every selected filter. Plants with unknown values are excluded for that filter.</p>
+        {(sunlight || zone || water || selectedCategory || searchTerm) && <button type="button" className="btn-secondary" onClick={() => { setSunlight(''); setZone(''); setWater(''); setSelectedCategory(''); setSearchTerm(''); setPage(1) }}>Clear filters</button>}
+      </div>
       {sort === 'popular' && <p className="text-sm text-gray-600 dark:text-gray-400">Popularity reflects gardeners with each plant in active inventory or on their wishlist.</p>}
       <p className="text-sm text-gray-600 dark:text-gray-400">
         {loading ? 'Loading plants…' : `${total.toLocaleString()} plants found · Page ${page} of ${Math.max(1, totalPages)}`}

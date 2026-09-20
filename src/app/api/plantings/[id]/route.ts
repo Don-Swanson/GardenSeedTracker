@@ -63,6 +63,13 @@ export async function PUT(
       return NextResponse.json({ error: 'Planting not found' }, { status: 404 })
     }
 
+    if (data.locationId && !await prisma.gardenLocation.findFirst({
+      where: { id: data.locationId, userId: session.user.id },
+      select: { id: true },
+    })) {
+      return NextResponse.json({ error: 'Location not found' }, { status: 404 })
+    }
+
     const planting = await prisma.planting.update({
       where: { id },
       data: {

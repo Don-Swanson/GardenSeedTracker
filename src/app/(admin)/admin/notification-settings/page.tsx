@@ -62,11 +62,7 @@ export default function AdminNotificationSettingsPage() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    fetchSettings()
-  }, [])
-
-  const fetchSettings = async () => {
+  async function fetchSettings() {
     try {
       setLoading(true)
       const res = await fetch('/api/admin/notification-settings')
@@ -82,6 +78,10 @@ export default function AdminNotificationSettingsPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchSettings()
+  }, [])
 
   const handleToggle = (key: keyof NotificationSettings) => {
     setSettings(prev => ({ ...prev, [key]: !prev[key] }))

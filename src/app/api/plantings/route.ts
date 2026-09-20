@@ -37,6 +37,13 @@ export async function POST(request: Request) {
     }
 
     const data = await request.json()
+
+    if (data.locationId && !await prisma.gardenLocation.findFirst({
+      where: { id: data.locationId, userId: session.user.id },
+      select: { id: true },
+    })) {
+      return NextResponse.json({ error: 'Location not found' }, { status: 404 })
+    }
     
     // Verify the seed belongs to this user before creating planting
     if (data.seedId) {

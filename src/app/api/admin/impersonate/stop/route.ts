@@ -3,39 +3,39 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { createAuditLog } from '@/lib/audit'
 import { cookies } from 'next/headers'
+import { readImpersonationCookie } from '@/lib/impersonation'
 
 // POST /api/admin/impersonate/stop - Stop impersonating a user
 export async function POST() {
   try {
     const session = await getServerSession(authOptions)
+    if (!session?.user?.id || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
     
     const cookieStore = await cookies()
     const impersonationData = cookieStore.get('impersonation')
-    const adminSession = cookieStore.get('admin_session')
     
     if (!impersonationData) {
       return NextResponse.json({ error: 'Not currently impersonating' }, { status: 400 })
     }
 
-    let impersonation
-    try {
-      impersonation = JSON.parse(impersonationData.value)
-    } catch {
+    const targetId = readImpersonationCookie(impersonationData.value, session.user.id)
+    if (!targetId) {
       cookieStore.delete('impersonation')
-      return NextResponse.json({ error: 'Invalid impersonation data' }, { status: 400 })
+      cookieStore.delete('admin_session')
+      return NextResponse.json({ success: true })
     }
 
     // Log the end of impersonation
     await createAuditLog({
-      adminId: impersonation.adminId,
-      adminEmail: impersonation.adminEmail || '',
+      adminId: session.user.id,
+      adminEmail: session.user.email || '',
       action: 'impersonate_end',
       targetType: 'user',
-      targetId: impersonation.user.id,
-      targetEmail: impersonation.user.email,
+      targetId,
       details: { 
         action: 'impersonation_ended',
-        duration: Math.round((Date.now() - new Date(impersonation.startedAt).getTime()) / 1000) + ' seconds'
       }
     })
 

@@ -48,6 +48,7 @@ export default function ImpersonationBanner() {
         // Clear local state immediately
         setImpersonation(null)
         // Redirect to admin users page
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Clear cached data when the impersonated identity changes.
         window.location.href = '/admin/users'
       } else {
         alert('Failed to stop impersonation')

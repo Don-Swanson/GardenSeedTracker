@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
 import { cookies } from 'next/headers'
-import crypto from 'crypto'
+import { createImpersonationCookie } from '@/lib/impersonation'
 
 // POST /api/admin/impersonate/start - Start impersonating a user
 export async function POST(req: NextRequest) {
@@ -40,17 +40,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Cannot impersonate admin users' }, { status: 400 })
     }
 
-    // Generate impersonation token
-    const token = crypto.randomBytes(32).toString('hex')
-    
-    // Store impersonation data in a secure cookie
-    const impersonationData = {
-      adminId: session.user.id,
-      adminEmail: session.user.email,
-      user: targetUser,
-      token,
-      startedAt: new Date().toISOString()
-    }
+    const token = createImpersonationCookie(session.user.id, targetUser.id)
 
     const cookieStore = await cookies()
     
@@ -66,7 +56,7 @@ export async function POST(req: NextRequest) {
       maxAge: 60 * 60 // 1 hour max impersonation
     })
     
-    cookieStore.set('impersonation', JSON.stringify(impersonationData), {
+    cookieStore.set('impersonation', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -83,7 +73,6 @@ export async function POST(req: NextRequest) {
       targetEmail: targetUser.email,
       details: { 
         action: 'impersonation_started',
-        token: token.substring(0, 8) + '...'
       }
     })
 

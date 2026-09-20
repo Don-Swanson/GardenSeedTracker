@@ -1,5 +1,7 @@
 'use client'
 
+import { safeCallbackPath } from '@/lib/redirects'
+
 import { Suspense, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
@@ -10,7 +12,7 @@ function AuthCallbackPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const remember = searchParams.get('remember') === 'true'
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+  const callbackUrl = safeCallbackPath(searchParams.get('callbackUrl'))
 
   useEffect(() => {
     async function handleCallback() {

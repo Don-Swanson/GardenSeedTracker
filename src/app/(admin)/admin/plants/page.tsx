@@ -82,246 +82,7 @@ interface Plant {
   createdAt: string
 }
 
-export default function PlantsPage() {
-  const [plants, setPlants] = useState<Plant[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('all')
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [editingPlant, setEditingPlant] = useState<Plant | null>(null)
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [deepLinkError, setDeepLinkError] = useState('')
-  const [returnTo] = useState(() => {
-    if (typeof window === 'undefined') return null
-    const value = new URLSearchParams(window.location.search).get('returnTo')
-    return value?.startsWith('/plants/') ? value : null
-  })
-  
-  // Collapsible sections in form
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    basic: true,
-    details: false,
-    uses: false,
-    growing: false,
-    timing: false,
-    conditions: false,
-    pests: false,
-    harvest: false,
-    source: false,
-    admin: false,
-  })
-
-  const toggleSection = (section: string) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
-  }
-
-  const fetchPlants = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        search,
-        category: category === 'all' ? '' : category,
-        limit: '20'
-      })
-      const res = await fetch(`/api/admin/plants?${params}`)
-      if (res.ok) {
-        const data = await res.json()
-        setPlants(data.plants)
-        setTotalPages(data.pagination?.totalPages || 1)
-      }
-    } catch (err) {
-      console.error('Failed to fetch plants:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [page, search, category])
-
-  useEffect(() => {
-    const timer = setTimeout(() => { fetchPlants() }, 300)
-    return () => clearTimeout(timer)
-  }, [fetchPlants])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const editId = new URLSearchParams(window.location.search).get('edit')
-    if (!editId) return
-
-    const controller = new AbortController()
-    const loadPlant = async () => {
-      try {
-        const response = await fetch(`/api/admin/plants/${encodeURIComponent(editId)}`, {
-          signal: controller.signal,
-        })
-        if (!response.ok) throw new Error('Plant could not be loaded for editing')
-        const data = await response.json()
-        setEditingPlant(data.plant)
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return
-        setDeepLinkError(error instanceof Error ? error.message : 'Plant could not be loaded for editing')
-      }
-    }
-    loadPlant()
-    return () => controller.abort()
-  }, [])
-
-  const closeEditor = () => {
-    setEditingPlant(null)
-    setShowAddModal(false)
-    if (returnTo) window.location.assign(returnTo)
-  }
-
-  const handleSavePlant = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setSaving(true)
-
-    const formData = new FormData(e.currentTarget)
-    
-    const getNumber = (key: string) => {
-      const val = formData.get(key) as string
-      return val && val.trim() !== '' ? parseFloat(val) : null
-    }
-    
-    const getString = (key: string) => {
-      const val = formData.get(key) as string
-      return val && val.trim() !== '' ? val.trim() : null
-    }
-
-    const data = {
-      name: formData.get('name'),
-      category: formData.get('category'),
-      subcategory: getString('subcategory'),
-      scientificName: getString('scientificName'),
-      commonNames: getString('commonNames'),
-      description: getString('description'),
-      generalInfo: getString('generalInfo'),
-      funFacts: getString('funFacts'),
-      variations: getString('variations'),
-      hardinessZones: getString('hardinessZones'),
-      optimalZones: getString('optimalZones'),
-      zoneNotes: getString('zoneNotes'),
-      culinaryUses: getString('culinaryUses'),
-      recipes: getString('recipes'),
-      flavorProfile: getString('flavorProfile'),
-      nutritionalInfo: getString('nutritionalInfo'),
-      medicinalUses: getString('medicinalUses'),
-      holisticUses: getString('holisticUses'),
-      cautions: getString('cautions'),
-      craftIdeas: getString('craftIdeas'),
-      history: getString('history'),
-      culturalSignificance: getString('culturalSignificance'),
-      indoorStartWeeks: getNumber('indoorStartWeeks'),
-      outdoorStartWeeks: getNumber('outdoorStartWeeks'),
-      transplantWeeks: getNumber('transplantWeeks'),
-      harvestWeeks: getNumber('harvestWeeks'),
-      daysToGerminate: getNumber('daysToGerminate'),
-      daysToMaturity: getNumber('daysToMaturity'),
-      minGerminationTemp: getNumber('minGerminationTemp'),
-      optGerminationTemp: getNumber('optGerminationTemp'),
-      minGrowingTemp: getNumber('minGrowingTemp'),
-      maxGrowingTemp: getNumber('maxGrowingTemp'),
-      sunRequirement: getString('sunRequirement'),
-      waterNeeds: getString('waterNeeds'),
-      soilPH: getString('soilPH'),
-      spacing: getString('spacing'),
-      plantingDepth: getString('plantingDepth'),
-      rowSpacing: getString('rowSpacing'),
-      plantsPerSquareFoot: getNumber('plantsPerSquareFoot'),
-      companionPlants: getString('companionPlants'),
-      avoidPlants: getString('avoidPlants'),
-      commonPests: getString('commonPests'),
-      commonDiseases: getString('commonDiseases'),
-      organicPestControl: getString('organicPestControl'),
-      harvestTips: getString('harvestTips'),
-      storageTips: getString('storageTips'),
-      preservationMethods: getString('preservationMethods'),
-      notes: getString('notes'),
-      imageUrl: getString('imageUrl'),
-      sourceName: getString('sourceName'),
-      sourceId: getString('sourceId'),
-      sourceUrl: getString('sourceUrl'),
-      sourceLicense: getString('sourceLicense'),
-      sourceRetrievedAt: getString('sourceRetrievedAt'),
-      sourceData: getString('sourceData'),
-      isApproved: formData.get('isApproved') === 'on',
-    }
-
-    try {
-      const url = editingPlant 
-        ? `/api/admin/plants/${editingPlant.id}`
-        : '/api/admin/plants'
-      const method = editingPlant ? 'PUT' : 'POST'
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      })
-
-      if (res.ok) {
-        if (returnTo) {
-          window.location.assign(returnTo)
-        } else {
-          setEditingPlant(null)
-          setShowAddModal(false)
-          fetchPlants()
-        }
-      } else {
-        const error = await res.json()
-        alert(error.error || 'Failed to save plant')
-      }
-    } catch (err) {
-      console.error('Failed to save plant:', err)
-      alert('Failed to save plant')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleDeletePlant = async (plant: Plant) => {
-    if (!confirm(`Delete "${plant.name}"? This will also remove it from any seeds that reference it.`)) {
-      return
-    }
-
-    try {
-      const res = await fetch(`/api/admin/plants/${plant.id}`, {
-        method: 'DELETE'
-      })
-
-      if (res.ok) {
-        fetchPlants()
-      } else {
-        const error = await res.json()
-        alert(error.error || 'Failed to delete plant')
-      }
-    } catch (err) {
-      console.error('Failed to delete plant:', err)
-      alert('Failed to delete plant')
-    }
-  }
-
-  const handleToggleApproval = async (plant: Plant) => {
-    try {
-      const res = await fetch(`/api/admin/plants/${plant.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...plant, isApproved: !plant.isApproved })
-      })
-
-      if (res.ok) {
-        fetchPlants()
-      } else {
-        const error = await res.json()
-        alert(error.error || 'Failed to update plant')
-      }
-    } catch (err) {
-      console.error('Failed to update plant:', err)
-    }
-  }
-
-  const SectionHeader = ({ title, section, icon }: { title: string; section: string; icon?: React.ReactNode }) => (
+  const SectionHeader = ({ title, section, icon, expandedSections, toggleSection }: { title: string; section: string; icon?: React.ReactNode; expandedSections: Record<string, boolean>; toggleSection: (section: string) => void }) => (
     <button
       type="button"
       onClick={() => toggleSection(section)}
@@ -339,11 +100,11 @@ export default function PlantsPage() {
     </button>
   )
 
-  const PlantForm = ({ plant }: { plant?: Plant | null }) => (
+  const PlantForm = ({ plant, expandedSections, toggleSection, handleSavePlant, saving, closeEditor }: { plant?: Plant | null; expandedSections: Record<string, boolean>; toggleSection: (section: string) => void; handleSavePlant: (event: React.FormEvent<HTMLFormElement>) => void; saving: boolean; closeEditor: () => void }) => (
     <form onSubmit={handleSavePlant} className="space-y-4">
       {/* Basic Information - Always Expanded */}
       <div className="space-y-4">
-        <SectionHeader title="Basic Information" section="basic" icon={<Leaf className="w-4 h-4" />} />
+        <SectionHeader expandedSections={expandedSections} toggleSection={toggleSection} title="Basic Information" section="basic" icon={<Leaf className="w-4 h-4" />} />
         {expandedSections.basic && (
           <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -427,7 +188,7 @@ export default function PlantsPage() {
 
       {/* Details & Facts */}
       <div className="space-y-4">
-        <SectionHeader title="Details & Facts" section="details" />
+        <SectionHeader expandedSections={expandedSections} toggleSection={toggleSection} title="Details & Facts" section="details" />
         {expandedSections.details && (
           <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
             <div>
@@ -484,7 +245,7 @@ export default function PlantsPage() {
 
       {/* Uses */}
       <div className="space-y-4">
-        <SectionHeader title="Uses & Applications" section="uses" />
+        <SectionHeader expandedSections={expandedSections} toggleSection={toggleSection} title="Uses & Applications" section="uses" />
         {expandedSections.uses && (
           <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
             <div>
@@ -570,7 +331,7 @@ export default function PlantsPage() {
 
       {/* Growing Conditions */}
       <div className="space-y-4">
-        <SectionHeader title="Growing Conditions" section="conditions" />
+        <SectionHeader expandedSections={expandedSections} toggleSection={toggleSection} title="Growing Conditions" section="conditions" />
         {expandedSections.conditions && (
           <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -724,7 +485,7 @@ export default function PlantsPage() {
 
       {/* Timing */}
       <div className="space-y-4">
-        <SectionHeader title="Timing" section="timing" />
+        <SectionHeader expandedSections={expandedSections} toggleSection={toggleSection} title="Timing" section="timing" />
         {expandedSections.timing && (
           <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -791,7 +552,7 @@ export default function PlantsPage() {
 
       {/* Companion Planting & Growing */}
       <div className="space-y-4">
-        <SectionHeader title="Companion Planting" section="growing" />
+        <SectionHeader expandedSections={expandedSections} toggleSection={toggleSection} title="Companion Planting" section="growing" />
         {expandedSections.growing && (
           <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
             <div>
@@ -820,7 +581,7 @@ export default function PlantsPage() {
 
       {/* Pests & Diseases */}
       <div className="space-y-4">
-        <SectionHeader title="Pests & Diseases" section="pests" />
+        <SectionHeader expandedSections={expandedSections} toggleSection={toggleSection} title="Pests & Diseases" section="pests" />
         {expandedSections.pests && (
           <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
             <div>
@@ -856,7 +617,7 @@ export default function PlantsPage() {
 
       {/* Harvest & Storage */}
       <div className="space-y-4">
-        <SectionHeader title="Harvest & Storage" section="harvest" />
+        <SectionHeader expandedSections={expandedSections} toggleSection={toggleSection} title="Harvest & Storage" section="harvest" />
         {expandedSections.harvest && (
           <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
             <div>
@@ -901,7 +662,7 @@ export default function PlantsPage() {
 
       {/* Source and provenance */}
       <div className="space-y-3">
-        <SectionHeader title="Source & Provenance" section="source" />
+        <SectionHeader expandedSections={expandedSections} toggleSection={toggleSection} title="Source & Provenance" section="source" />
         {expandedSections.source && (
           <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -941,7 +702,7 @@ export default function PlantsPage() {
 
       {/* Admin Settings */}
       <div className="space-y-4">
-        <SectionHeader title="Admin Settings" section="admin" />
+        <SectionHeader expandedSections={expandedSections} toggleSection={toggleSection} title="Admin Settings" section="admin" />
         {expandedSections.admin && (
           <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
             <div className="flex items-center gap-3">
@@ -981,6 +742,246 @@ export default function PlantsPage() {
     </form>
   )
 
+export default function PlantsPage() {
+  const [plants, setPlants] = useState<Plant[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('all')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [editingPlant, setEditingPlant] = useState<Plant | null>(null)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [deepLinkError, setDeepLinkError] = useState('')
+  const [returnTo] = useState(() => {
+    if (typeof window === 'undefined') return null
+    const value = new URLSearchParams(window.location.search).get('returnTo')
+    return value?.startsWith('/plants/') ? value : null
+  })
+
+  // Collapsible sections in form
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    basic: true,
+    details: false,
+    uses: false,
+    growing: false,
+    timing: false,
+    conditions: false,
+    pests: false,
+    harvest: false,
+    source: false,
+    admin: false,
+  })
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
+
+  const fetchPlants = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        search,
+        category: category === 'all' ? '' : category,
+        limit: '20'
+      })
+      const res = await fetch(`/api/admin/plants?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setPlants(data.plants)
+        setTotalPages(data.pagination?.totalPages || 1)
+      }
+    } catch (err) {
+      console.error('Failed to fetch plants:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [page, search, category])
+
+  useEffect(() => {
+    const timer = setTimeout(() => { fetchPlants() }, 300)
+    return () => clearTimeout(timer)
+  }, [fetchPlants])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const editId = new URLSearchParams(window.location.search).get('edit')
+    if (!editId) return
+
+    const controller = new AbortController()
+    const loadPlant = async () => {
+      try {
+        const response = await fetch(`/api/admin/plants/${encodeURIComponent(editId)}`, {
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error('Plant could not be loaded for editing')
+        const data = await response.json()
+        setEditingPlant(data.plant)
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        setDeepLinkError(error instanceof Error ? error.message : 'Plant could not be loaded for editing')
+      }
+    }
+    loadPlant()
+    return () => controller.abort()
+  }, [])
+
+  const closeEditor = () => {
+    setEditingPlant(null)
+    setShowAddModal(false)
+    if (returnTo) window.location.assign(returnTo)
+  }
+
+  const handleSavePlant = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setSaving(true)
+
+    const formData = new FormData(e.currentTarget)
+
+    const getNumber = (key: string) => {
+      const val = formData.get(key) as string
+      return val && val.trim() !== '' ? parseFloat(val) : null
+    }
+
+    const getString = (key: string) => {
+      const val = formData.get(key) as string
+      return val && val.trim() !== '' ? val.trim() : null
+    }
+
+    const data = {
+      name: formData.get('name'),
+      category: formData.get('category'),
+      subcategory: getString('subcategory'),
+      scientificName: getString('scientificName'),
+      commonNames: getString('commonNames'),
+      description: getString('description'),
+      generalInfo: getString('generalInfo'),
+      funFacts: getString('funFacts'),
+      variations: getString('variations'),
+      hardinessZones: getString('hardinessZones'),
+      optimalZones: getString('optimalZones'),
+      zoneNotes: getString('zoneNotes'),
+      culinaryUses: getString('culinaryUses'),
+      recipes: getString('recipes'),
+      flavorProfile: getString('flavorProfile'),
+      nutritionalInfo: getString('nutritionalInfo'),
+      medicinalUses: getString('medicinalUses'),
+      holisticUses: getString('holisticUses'),
+      cautions: getString('cautions'),
+      craftIdeas: getString('craftIdeas'),
+      history: getString('history'),
+      culturalSignificance: getString('culturalSignificance'),
+      indoorStartWeeks: getNumber('indoorStartWeeks'),
+      outdoorStartWeeks: getNumber('outdoorStartWeeks'),
+      transplantWeeks: getNumber('transplantWeeks'),
+      harvestWeeks: getNumber('harvestWeeks'),
+      daysToGerminate: getNumber('daysToGerminate'),
+      daysToMaturity: getNumber('daysToMaturity'),
+      minGerminationTemp: getNumber('minGerminationTemp'),
+      optGerminationTemp: getNumber('optGerminationTemp'),
+      minGrowingTemp: getNumber('minGrowingTemp'),
+      maxGrowingTemp: getNumber('maxGrowingTemp'),
+      sunRequirement: getString('sunRequirement'),
+      waterNeeds: getString('waterNeeds'),
+      soilPH: getString('soilPH'),
+      spacing: getString('spacing'),
+      plantingDepth: getString('plantingDepth'),
+      rowSpacing: getString('rowSpacing'),
+      plantsPerSquareFoot: getNumber('plantsPerSquareFoot'),
+      companionPlants: getString('companionPlants'),
+      avoidPlants: getString('avoidPlants'),
+      commonPests: getString('commonPests'),
+      commonDiseases: getString('commonDiseases'),
+      organicPestControl: getString('organicPestControl'),
+      harvestTips: getString('harvestTips'),
+      storageTips: getString('storageTips'),
+      preservationMethods: getString('preservationMethods'),
+      notes: getString('notes'),
+      imageUrl: getString('imageUrl'),
+      sourceName: getString('sourceName'),
+      sourceId: getString('sourceId'),
+      sourceUrl: getString('sourceUrl'),
+      sourceLicense: getString('sourceLicense'),
+      sourceRetrievedAt: getString('sourceRetrievedAt'),
+      sourceData: getString('sourceData'),
+      isApproved: formData.get('isApproved') === 'on',
+    }
+
+    try {
+      const url = editingPlant
+        ? `/api/admin/plants/${editingPlant.id}`
+        : '/api/admin/plants'
+      const method = editingPlant ? 'PUT' : 'POST'
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+
+      if (res.ok) {
+        if (returnTo) {
+          window.location.assign(returnTo)
+        } else {
+          setEditingPlant(null)
+          setShowAddModal(false)
+          fetchPlants()
+        }
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Failed to save plant')
+      }
+    } catch (err) {
+      console.error('Failed to save plant:', err)
+      alert('Failed to save plant')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeletePlant = async (plant: Plant) => {
+    if (!confirm(`Permanently delete "${plant.name}"? Linked seed and wishlist entries will keep the plant name as a custom entry.`)) {
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/admin/plants/${plant.id}`, {
+        method: 'DELETE'
+      })
+
+      if (res.ok) {
+        fetchPlants()
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Failed to delete plant')
+      }
+    } catch (err) {
+      console.error('Failed to delete plant:', err)
+      alert('Failed to delete plant')
+    }
+  }
+
+  const handleToggleApproval = async (plant: Plant) => {
+    try {
+      const res = await fetch(`/api/admin/plants/${plant.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...plant, isApproved: !plant.isApproved })
+      })
+
+      if (res.ok) {
+        fetchPlants()
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Failed to update plant')
+      }
+    } catch (err) {
+      console.error('Failed to update plant:', err)
+    }
+  }
+
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -1019,7 +1020,7 @@ export default function PlantsPage() {
               </button>
             </div>
             <div className="p-6">
-              <PlantForm plant={editingPlant} />
+              <PlantForm plant={editingPlant} expandedSections={expandedSections} toggleSection={toggleSection} handleSavePlant={handleSavePlant} saving={saving} closeEditor={closeEditor} />
             </div>
           </div>
         </div>

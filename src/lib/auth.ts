@@ -6,6 +6,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import { prisma } from './prisma'
 import { cookies } from 'next/headers'
 import { notifyAdmins } from './admin-notifications'
+import { readImpersonationCookie } from './impersonation'
 
 // Email sending function - configure with your email service
 async function sendVerificationRequest({
@@ -121,18 +122,18 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      // On initial sign in, add user data to token
-      if (user) {
-        token.id = user.id
-        // Fetch user role
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { role: true },
-        })
-        if (dbUser) {
-          token.role = dbUser.role
-        }
-      }
+      // Recheck account existence and permissions on every server session read.
+      // A signed JWT must not retain privileges after demotion or deletion.
+      const id = user?.id || token.id
+      const dbUser = id ? await prisma.user.findUnique({
+        where: { id },
+        select: { id: true, role: true, email: true, name: true },
+      }) : null
+      if (!dbUser) throw new Error('Session account no longer exists')
+      token.id = dbUser.id
+      token.role = dbUser.role
+      token.email = dbUser.email
+      token.name = dbUser.name
       return token
     },
     async session({ session, token }) {
@@ -140,6 +141,8 @@ export const authOptions: NextAuthOptions = {
       if (session.user && token) {
         session.user.id = token.id as string
         session.user.role = token.role as string
+        session.user.email = token.email
+        session.user.name = token.name
       }
       return session
     },
@@ -216,13 +219,13 @@ export async function getAuthSession() {
       const impersonationCookie = cookieStore.get('impersonation')
       
       if (impersonationCookie) {
-        const impersonationData = JSON.parse(impersonationCookie.value)
+        const targetUserId = readImpersonationCookie(impersonationCookie.value, session.user.id)
         
         // Verify the impersonation is valid and the admin matches
-        if (impersonationData.adminId === session.user.id && impersonationData.user) {
+        if (targetUserId) {
           // Fetch fresh user data for the impersonated user
           const impersonatedUser = await prisma.user.findUnique({
-            where: { id: impersonationData.user.id },
+            where: { id: targetUserId },
             select: {
               id: true,
               email: true,
@@ -231,7 +234,7 @@ export async function getAuthSession() {
             }
           })
           
-          if (impersonatedUser) {
+          if (impersonatedUser && impersonatedUser.role !== 'admin') {
             // Return session with impersonated user's data
             return {
               ...session,

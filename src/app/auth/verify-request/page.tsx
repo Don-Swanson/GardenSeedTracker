@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, redirect } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
@@ -50,8 +50,7 @@ function VerifyRequestPageContent() {
       )
     }
     // Redirect to home after session is ready
-    window.location.href = '/'
-    return null
+    redirect('/')
   }
 
   return (

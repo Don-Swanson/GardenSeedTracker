@@ -10,7 +10,7 @@ import type { NextFetchEvent } from 'next/server'
 import { safeCallbackPath } from '../../src/lib/redirects'
 
 test('authentication redirects reject script schemes and external destinations', () => {
-  for (const value of ['javascript:alert(1)', 'data:text/html,test', '//evil.example', '/\\evil.example', 'https://evil.example', '/\n/evil.example', null]) {
+  for (const value of ['javascript:alert(1)', 'data:text/html,test', '//evil.example', '/\\evil.example', 'https://evil.example', '/\n/evil.example', '/a/..//evil.example', '/%2e//evil.example', null]) {
     assert.equal(safeCallbackPath(value), '/dashboard')
   }
   assert.equal(safeCallbackPath('/seeds?sort=name#saved'), '/seeds?sort=name#saved')

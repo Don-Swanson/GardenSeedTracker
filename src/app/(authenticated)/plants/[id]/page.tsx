@@ -48,9 +48,6 @@ interface Plant {
   scientificName?: string
   description?: string
   commonNames?: string
-  sourceName?: string
-  sourceUrl?: string
-  sourceLicense?: string
   
   // Detailed info
   generalInfo?: string
@@ -323,13 +320,6 @@ export default function PlantDetailPage() {
               <p className="text-lg text-gray-500 italic">{plant.scientificName}</p>
             )}
             {commonNames.length > 0 && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">Also known as: {commonNames.join(', ')}</p>}
-            {plant.sourceName && plant.sourceUrl && (
-              <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
-                Plant data source:{' '}
-                <a href={plant.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline text-garden-700 dark:text-garden-400">{plant.sourceName}</a>
-                {plant.sourceLicense ? ` · ${plant.sourceLicense}` : ''}
-              </p>
-            )}
             <div className="flex items-center gap-2 mt-2">
               <span className="text-sm bg-garden-100 dark:bg-garden-900/50 text-garden-800 dark:text-garden-200 px-3 py-1 rounded-full capitalize">
                 {plant.category}

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
+import { sanitizeEmail } from '@/lib/validation'
 
 // POST /api/auth/change-email - Request email change (sends verification to new email)
 export async function POST(req: NextRequest) {
@@ -14,17 +15,15 @@ export async function POST(req: NextRequest) {
 
     const { newEmail } = await req.json()
 
-    if (!newEmail || !newEmail.trim()) {
+    if (typeof newEmail !== 'string' || !newEmail.trim()) {
       return NextResponse.json({ error: 'New email is required' }, { status: 400 })
     }
 
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(newEmail)) {
+    const normalizedEmail = sanitizeEmail(newEmail)
+    if (!normalizedEmail) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 })
     }
-
-    const normalizedEmail = newEmail.toLowerCase().trim()
 
     // Check if email is same as current
     const currentUser = await prisma.user.findUnique({

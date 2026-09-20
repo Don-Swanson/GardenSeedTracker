@@ -5,6 +5,7 @@
  */
 
 import { prisma } from './prisma'
+import { escapeHtml } from './html'
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production'
 
@@ -93,13 +94,13 @@ function wrapInTemplate(title: string, content: string): string {
         <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;">Admin Notification</p>
       </div>
       <div style="background: #ffffff; padding: 24px; border: 1px solid #e5e7eb; border-top: none;">
-        <h2 style="color: #1f2937; margin: 0 0 16px 0; font-size: 20px;">${title}</h2>
+        <h2 style="color: #1f2937; margin: 0 0 16px 0; font-size: 20px;">${escapeHtml(title)}</h2>
         ${content}
       </div>
       <div style="background: #f9fafb; padding: 16px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
         <p style="color: #6b7280; font-size: 12px; margin: 0;">
           You're receiving this because you've subscribed to admin notifications. 
-          <a href="${process.env.NEXTAUTH_URL}/admin/settings" style="color: #16a34a;">Manage preferences</a>
+          <a href="${escapeHtml(process.env.NEXTAUTH_URL || 'http://localhost:3000')}/admin/settings" style="color: #16a34a;">Manage preferences</a>
         </p>
       </div>
     </div>
@@ -131,7 +132,7 @@ export async function notifyAdmins(
 /**
  * Generate email content based on notification type
  */
-function generateEmailContent(type: AdminNotificationType, data: NotificationData): {
+export function generateEmailContent(type: AdminNotificationType, data: NotificationData): {
   subject: string
   html: string
   text: string
@@ -145,10 +146,10 @@ function generateEmailContent(type: AdminNotificationType, data: NotificationDat
         html: wrapInTemplate('New User Registered', `
           <p style="color: #374151; line-height: 1.6;">A new user has signed up for Garden Seed Tracker:</p>
           <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 16px 0;">
-            <p style="margin: 0; color: #166534;"><strong>Email:</strong> ${data.userEmail}</p>
-            ${data.userName ? `<p style="margin: 8px 0 0 0; color: #166534;"><strong>Name:</strong> ${data.userName}</p>` : ''}
+            <p style="margin: 0; color: #166534;"><strong>Email:</strong> ${escapeHtml(data.userEmail || '')}</p>
+            ${data.userName ? `<p style="margin: 8px 0 0 0; color: #166534;"><strong>Name:</strong> ${escapeHtml(data.userName || '')}</p>` : ''}
           </div>
-          <a href="${baseUrl}/admin/users" style="display: inline-block; background: #16a34a; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;">View Users</a>
+          <a href="${escapeHtml(baseUrl)}/admin/users" style="display: inline-block; background: #16a34a; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;">View Users</a>
         `),
         text: `New User Signup\n\nEmail: ${data.userEmail}${data.userName ? `\nName: ${data.userName}` : ''}\n\nView users: ${baseUrl}/admin/users`
       }
@@ -159,7 +160,7 @@ function generateEmailContent(type: AdminNotificationType, data: NotificationDat
         html: wrapInTemplate('User Account Deleted', `
           <p style="color: #374151; line-height: 1.6;">A user account has been deleted:</p>
           <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 16px 0;">
-            <p style="margin: 0; color: #991b1b;"><strong>Email:</strong> ${data.userEmail}</p>
+            <p style="margin: 0; color: #991b1b;"><strong>Email:</strong> ${escapeHtml(data.userEmail || '')}</p>
           </div>
         `),
         text: `User Deleted\n\nEmail: ${data.userEmail}`
@@ -171,10 +172,10 @@ function generateEmailContent(type: AdminNotificationType, data: NotificationDat
         html: wrapInTemplate('New Plant Submission', `
           <p style="color: #374151; line-height: 1.6;">A user has submitted a new plant for review:</p>
           <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 16px 0;">
-            <p style="margin: 0; color: #166534;"><strong>Plant:</strong> ${data.plantName}</p>
-            <p style="margin: 8px 0 0 0; color: #166534;"><strong>Submitted by:</strong> ${data.userEmail || data.userName || 'Anonymous'}</p>
+            <p style="margin: 0; color: #166534;"><strong>Plant:</strong> ${escapeHtml(data.plantName || '')}</p>
+            <p style="margin: 8px 0 0 0; color: #166534;"><strong>Submitted by:</strong> ${escapeHtml(data.userEmail || data.userName || 'Anonymous')}</p>
           </div>
-          <a href="${baseUrl}/admin/submissions" style="display: inline-block; background: #16a34a; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;">Review Submission</a>
+          <a href="${escapeHtml(baseUrl)}/admin/submissions" style="display: inline-block; background: #16a34a; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;">Review Submission</a>
         `),
         text: `New Plant Submission\n\nPlant: ${data.plantName}\nSubmitted by: ${data.userEmail || data.userName || 'Anonymous'}\n\nReview: ${baseUrl}/admin/submissions`
       }
@@ -185,11 +186,11 @@ function generateEmailContent(type: AdminNotificationType, data: NotificationDat
         html: wrapInTemplate('New Plant Suggestion', `
           <p style="color: #374151; line-height: 1.6;">A user has suggested an update to a plant:</p>
           <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 16px 0;">
-            <p style="margin: 0; color: #1e40af;"><strong>Plant:</strong> ${data.plantName}</p>
-            <p style="margin: 8px 0 0 0; color: #1e40af;"><strong>Suggested by:</strong> ${data.userEmail || data.userName || 'Anonymous'}</p>
-            ${data.additionalInfo?.section ? `<p style="margin: 8px 0 0 0; color: #1e40af;"><strong>Section:</strong> ${data.additionalInfo.section}</p>` : ''}
+            <p style="margin: 0; color: #1e40af;"><strong>Plant:</strong> ${escapeHtml(data.plantName || '')}</p>
+            <p style="margin: 8px 0 0 0; color: #1e40af;"><strong>Suggested by:</strong> ${escapeHtml(data.userEmail || data.userName || 'Anonymous')}</p>
+            ${data.additionalInfo?.section ? `<p style="margin: 8px 0 0 0; color: #1e40af;"><strong>Section:</strong> ${escapeHtml(String(data.additionalInfo.section))}</p>` : ''}
           </div>
-          <a href="${baseUrl}/admin/suggestions" style="display: inline-block; background: #16a34a; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;">Review Suggestion</a>
+          <a href="${escapeHtml(baseUrl)}/admin/suggestions" style="display: inline-block; background: #16a34a; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;">Review Suggestion</a>
         `),
         text: `New Plant Suggestion\n\nPlant: ${data.plantName}\nSuggested by: ${data.userEmail || data.userName || 'Anonymous'}\n\nReview: ${baseUrl}/admin/suggestions`
       }
@@ -200,10 +201,10 @@ function generateEmailContent(type: AdminNotificationType, data: NotificationDat
         html: wrapInTemplate('New Plant Request', `
           <p style="color: #374151; line-height: 1.6;">A user has requested a new plant to be added:</p>
           <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; padding: 16px; margin: 16px 0;">
-            <p style="margin: 0; color: #6b21a8;"><strong>Plant:</strong> ${data.plantName}</p>
-            <p style="margin: 8px 0 0 0; color: #6b21a8;"><strong>Requested by:</strong> ${data.userEmail || 'User'}</p>
+            <p style="margin: 0; color: #6b21a8;"><strong>Plant:</strong> ${escapeHtml(data.plantName || '')}</p>
+            <p style="margin: 8px 0 0 0; color: #6b21a8;"><strong>Requested by:</strong> ${escapeHtml(data.userEmail || 'User')}</p>
           </div>
-          <a href="${baseUrl}/admin/plants" style="display: inline-block; background: #16a34a; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;">View Requests</a>
+          <a href="${escapeHtml(baseUrl)}/admin/plants" style="display: inline-block; background: #16a34a; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;">View Requests</a>
         `),
         text: `New Plant Request\n\nPlant: ${data.plantName}\nRequested by: ${data.userEmail || 'User'}\n\nView requests: ${baseUrl}/admin/plants`
       }
@@ -214,7 +215,7 @@ function generateEmailContent(type: AdminNotificationType, data: NotificationDat
         html: wrapInTemplate('System Error', `
           <p style="color: #374151; line-height: 1.6;">A system error has occurred:</p>
           <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 16px 0;">
-            <p style="margin: 0; color: #991b1b; font-family: monospace; white-space: pre-wrap;">${data.errorMessage}</p>
+            <p style="margin: 0; color: #991b1b; font-family: monospace; white-space: pre-wrap;">${escapeHtml(data.errorMessage || '')}</p>
           </div>
         `),
         text: `System Error\n\n${data.errorMessage}`

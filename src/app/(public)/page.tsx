@@ -147,7 +147,7 @@ export default function LandingPage() {
             Everything You Need to Grow
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            From seed to harvest, we've got the tools to help you succeed in the garden.
+            From seed to harvest, we&apos;ve got the tools to help you succeed in the garden.
           </p>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -242,7 +242,7 @@ export default function LandingPage() {
                 ))}
               </div>
               <p className="text-gray-600 dark:text-gray-300 mb-4 italic">
-                "{testimonial.quote}"
+                &quot;{testimonial.quote}&quot;
               </p>
               <div>
                 <p className="font-semibold text-gray-900 dark:text-white">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { 
   ArrowLeft, 
   Search, 
@@ -53,11 +53,7 @@ export default function AdminSuggestionsPage() {
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({})
   const [processing, setProcessing] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchSuggestions()
-  }, [statusFilter])
-
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
@@ -77,7 +73,12 @@ export default function AdminSuggestionsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter])
+
+  useEffect(() => {
+    const timer = setTimeout(() => { fetchSuggestions() }, 0)
+    return () => clearTimeout(timer)
+  }, [fetchSuggestions])
 
   const handleReview = async (id: string, action: 'approve' | 'reject') => {
     try {
@@ -380,7 +381,7 @@ export default function AdminSuggestionsPage() {
                         </button>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 italic">
-                        Note: Approving a suggestion marks it for manual implementation. You'll need to update the plant information manually.
+                        Note: Approving a suggestion marks it for manual implementation. You&apos;ll need to update the plant information manually.
                       </p>
                     </div>
                   )}

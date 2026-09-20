@@ -28,7 +28,7 @@ const adminApiRoutes = [
 ]
 
 export default withAuth(
-  function middleware(req) {
+  function proxy(req) {
     const { pathname } = req.nextUrl
     const token = req.nextauth.token
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { 
   Search, 
   ChevronLeft, 
@@ -69,7 +69,7 @@ export default function AuditLogsPage() {
   const [expandedLog, setExpandedLog] = useState<string | null>(null)
   const limit = 25
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({
@@ -93,19 +93,12 @@ export default function AuditLogsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page, search, actionFilter, startDate, endDate])
 
   useEffect(() => {
-    fetchLogs()
-  }, [page, actionFilter, startDate, endDate])
-
-  useEffect(() => {
-    const debounce = setTimeout(() => {
-      setPage(1)
-      fetchLogs()
-    }, 300)
-    return () => clearTimeout(debounce)
-  }, [search])
+    const timer = setTimeout(() => { fetchLogs() }, 300)
+    return () => clearTimeout(timer)
+  }, [fetchLogs])
 
   const totalPages = Math.ceil(totalCount / limit)
 
@@ -158,7 +151,7 @@ export default function AuditLogsPage() {
               type="text"
               placeholder="Search by target email..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
               className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500"
             />
           </div>

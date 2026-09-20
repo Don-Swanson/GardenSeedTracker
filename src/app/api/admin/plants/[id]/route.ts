@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
+import { deletePlantPreservingReferences } from '@/lib/plant-delete'
 
 // GET /api/admin/plants/[id] - Get single plant
 export async function GET(
@@ -18,7 +19,12 @@ export async function GET(
     const { id } = await params
 
     const plant = await prisma.plantingGuide.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        _count: {
+          select: { seeds: true, wishlistItems: true, suggestions: true },
+        },
+      },
     })
 
     if (!plant) {
@@ -236,29 +242,23 @@ export async function DELETE(
 
     const { id } = await params
 
-    const plant = await prisma.plantingGuide.findUnique({
-      where: { id }
-    })
+    const deleted = await prisma.$transaction(tx => deletePlantPreservingReferences(tx, id))
 
-    if (!plant) {
+    if (!deleted) {
       return NextResponse.json({ error: 'Plant not found' }, { status: 404 })
     }
-
-    await prisma.plantingGuide.delete({
-      where: { id }
-    })
 
     await createAuditLog({
       adminId: session.user.id,
       adminEmail: session.user.email || '',
-      action: 'reject_plant_request',
+      action: 'delete_plant',
       targetType: 'plant',
       targetId: id,
-      details: { name: plant.name, action: 'delete' },
-      previousState: plant as any
+      details: { name: deleted.plant.name, action: 'delete', affected: deleted.affected },
+      previousState: deleted.plant as any
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, affected: deleted.affected })
   } catch (error) {
     console.error('Error deleting plant:', error)
     return NextResponse.json({ error: 'Failed to delete plant' }, { status: 500 })

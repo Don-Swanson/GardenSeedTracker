@@ -40,6 +40,7 @@ const actionLabels: Record<string, { label: string; color: string }> = {
   approve_plant_request: { label: 'Approve Plant Request', color: 'text-green-600 bg-green-100 dark:bg-green-900/30' },
   reject_plant_request: { label: 'Reject Plant Request', color: 'text-red-600 bg-red-100 dark:bg-red-900/30' },
   edit_plant_request: { label: 'Edit Plant Request', color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
+  delete_plant: { label: 'Delete Plant', color: 'text-red-600 bg-red-100 dark:bg-red-900/30' },
   delete_user: { label: 'Delete User', color: 'text-red-600 bg-red-100 dark:bg-red-900/30' },
   update_user_role: { label: 'Update Role', color: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30' },
   impersonate_start: { label: 'Start Impersonation', color: 'text-orange-600 bg-orange-100 dark:bg-orange-900/30' },

@@ -27,7 +27,8 @@ import {
   ChevronUp,
   Scissors,
   ExternalLink,
-  LogIn
+  LogIn,
+  Pencil
 } from 'lucide-react'
 
 interface Recipe {
@@ -299,6 +300,7 @@ export default function PlantDetailPage() {
   }
 
   const funFacts = parseJsonField(plant.funFacts)
+  const commonNames = parseJsonField(plant.commonNames)
   const variations = parseJsonField(plant.variations)
   const hardinessZones = parseJsonField(plant.hardinessZones)
   const optimalZones = parseJsonField(plant.optimalZones)
@@ -320,7 +322,7 @@ export default function PlantDetailPage() {
             {plant.scientificName && (
               <p className="text-lg text-gray-500 italic">{plant.scientificName}</p>
             )}
-            {plant.commonNames && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">Also known as: {plant.commonNames}</p>}
+            {commonNames.length > 0 && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">Also known as: {commonNames.join(', ')}</p>}
             {plant.sourceName && plant.sourceUrl && (
               <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
                 Plant data source:{' '}
@@ -354,23 +356,34 @@ export default function PlantDetailPage() {
             )}
           </div>
           
-          {session ? (
-            <button
-              onClick={() => setShowSuggestionModal(true)}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Suggest an Update
-            </button>
-          ) : (
-            <Link
-              href="/auth/signin"
-              className="btn-secondary flex items-center gap-2"
-            >
-              <LogIn className="w-4 h-4" />
-              Sign in to Suggest Updates
-            </Link>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {session?.user?.role === 'admin' && (
+              <Link
+                href={{ pathname: '/admin/plants', query: { edit: plant.id, returnTo: `/plants/${plant.id}` } }}
+                className="btn btn-primary flex items-center gap-2"
+              >
+                <Pencil className="w-4 h-4" />
+                Edit Plant
+              </Link>
+            )}
+            {session ? (
+              <button
+                onClick={() => setShowSuggestionModal(true)}
+                className="btn-secondary flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Suggest an Update
+              </button>
+            ) : (
+              <Link
+                href="/auth/signin"
+                className="btn-secondary flex items-center gap-2"
+              >
+                <LogIn className="w-4 h-4" />
+                Sign in to Suggest Updates
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 

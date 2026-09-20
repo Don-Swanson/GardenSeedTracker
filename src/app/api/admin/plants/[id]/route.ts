@@ -58,10 +58,17 @@ export async function PUT(
     const {
       name,
       scientificName,
+      commonNames,
       description,
       category,
       subcategory,
       imageUrl,
+      sourceName,
+      sourceId,
+      sourceUrl,
+      sourceLicense,
+      sourceRetrievedAt,
+      sourceData,
       // Detailed info
       generalInfo,
       funFacts,
@@ -120,15 +127,27 @@ export async function PUT(
       isApproved,
     } = body
 
+    const parsedSourceRetrievedAt = sourceRetrievedAt ? new Date(sourceRetrievedAt) : null
+    if (parsedSourceRetrievedAt && Number.isNaN(parsedSourceRetrievedAt.getTime())) {
+      return NextResponse.json({ error: 'Invalid source retrieval date' }, { status: 400 })
+    }
+
     const plant = await prisma.plantingGuide.update({
       where: { id },
       data: {
         name,
         scientificName,
+        commonNames,
         description,
         category,
         subcategory,
         imageUrl,
+        sourceName,
+        sourceId,
+        sourceUrl,
+        sourceLicense,
+        sourceRetrievedAt: parsedSourceRetrievedAt,
+        sourceData,
         generalInfo,
         funFacts,
         variations,

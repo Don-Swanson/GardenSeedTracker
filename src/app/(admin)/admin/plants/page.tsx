@@ -26,6 +26,7 @@ interface Plant {
   category: string
   subcategory: string | null
   scientificName: string | null
+  commonNames: string | null
   description: string | null
   generalInfo: string | null
   funFacts: string | null
@@ -70,6 +71,12 @@ interface Plant {
   preservationMethods: string | null
   notes: string | null
   imageUrl: string | null
+  sourceName: string | null
+  sourceId: string | null
+  sourceUrl: string | null
+  sourceLicense: string | null
+  sourceRetrievedAt: string | null
+  sourceData: string | null
   isUserSubmitted: boolean
   isApproved: boolean
   createdAt: string
@@ -85,6 +92,12 @@ export default function PlantsPage() {
   const [editingPlant, setEditingPlant] = useState<Plant | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deepLinkError, setDeepLinkError] = useState('')
+  const [returnTo] = useState(() => {
+    if (typeof window === 'undefined') return null
+    const value = new URLSearchParams(window.location.search).get('returnTo')
+    return value?.startsWith('/plants/') ? value : null
+  })
   
   // Collapsible sections in form
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -96,6 +109,7 @@ export default function PlantsPage() {
     conditions: false,
     pests: false,
     harvest: false,
+    source: false,
     admin: false,
   })
 
@@ -130,6 +144,35 @@ export default function PlantsPage() {
     return () => clearTimeout(timer)
   }, [fetchPlants])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const editId = new URLSearchParams(window.location.search).get('edit')
+    if (!editId) return
+
+    const controller = new AbortController()
+    const loadPlant = async () => {
+      try {
+        const response = await fetch(`/api/admin/plants/${encodeURIComponent(editId)}`, {
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error('Plant could not be loaded for editing')
+        const data = await response.json()
+        setEditingPlant(data.plant)
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+        setDeepLinkError(error instanceof Error ? error.message : 'Plant could not be loaded for editing')
+      }
+    }
+    loadPlant()
+    return () => controller.abort()
+  }, [])
+
+  const closeEditor = () => {
+    setEditingPlant(null)
+    setShowAddModal(false)
+    if (returnTo) window.location.assign(returnTo)
+  }
+
   const handleSavePlant = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setSaving(true)
@@ -151,6 +194,7 @@ export default function PlantsPage() {
       category: formData.get('category'),
       subcategory: getString('subcategory'),
       scientificName: getString('scientificName'),
+      commonNames: getString('commonNames'),
       description: getString('description'),
       generalInfo: getString('generalInfo'),
       funFacts: getString('funFacts'),
@@ -195,6 +239,12 @@ export default function PlantsPage() {
       preservationMethods: getString('preservationMethods'),
       notes: getString('notes'),
       imageUrl: getString('imageUrl'),
+      sourceName: getString('sourceName'),
+      sourceId: getString('sourceId'),
+      sourceUrl: getString('sourceUrl'),
+      sourceLicense: getString('sourceLicense'),
+      sourceRetrievedAt: getString('sourceRetrievedAt'),
+      sourceData: getString('sourceData'),
       isApproved: formData.get('isApproved') === 'on',
     }
 
@@ -211,9 +261,13 @@ export default function PlantsPage() {
       })
 
       if (res.ok) {
-        setEditingPlant(null)
-        setShowAddModal(false)
-        fetchPlants()
+        if (returnTo) {
+          window.location.assign(returnTo)
+        } else {
+          setEditingPlant(null)
+          setShowAddModal(false)
+          fetchPlants()
+        }
       } else {
         const error = await res.json()
         alert(error.error || 'Failed to save plant')
@@ -311,6 +365,16 @@ export default function PlantsPage() {
                   defaultValue={plant?.scientificName || ''} 
                   className="input"
                   placeholder="e.g., Solanum lycopersicum"
+                />
+              </div>
+              <div>
+                <label className="label">Common Names</label>
+                <input
+                  type="text"
+                  name="commonNames"
+                  defaultValue={plant?.commonNames || ''}
+                  className="input"
+                  placeholder='JSON array or comma-separated names, e.g. ["Roma tomato"]'
                 />
               </div>
             </div>
@@ -835,6 +899,46 @@ export default function PlantsPage() {
         )}
       </div>
 
+      {/* Source and provenance */}
+      <div className="space-y-3">
+        <SectionHeader title="Source & Provenance" section="source" />
+        {expandedSections.source && (
+          <div className="space-y-4 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="label">Source Name</label>
+                <input name="sourceName" defaultValue={plant?.sourceName || ''} className="input" />
+              </div>
+              <div>
+                <label className="label">Source ID</label>
+                <input name="sourceId" defaultValue={plant?.sourceId || ''} className="input" />
+              </div>
+              <div>
+                <label className="label">Source URL</label>
+                <input type="url" name="sourceUrl" defaultValue={plant?.sourceUrl || ''} className="input" />
+              </div>
+              <div>
+                <label className="label">Source License</label>
+                <input name="sourceLicense" defaultValue={plant?.sourceLicense || ''} className="input" />
+              </div>
+              <div>
+                <label className="label">Retrieved At</label>
+                <input
+                  type="datetime-local"
+                  name="sourceRetrievedAt"
+                  defaultValue={plant?.sourceRetrievedAt ? plant.sourceRetrievedAt.slice(0, 16) : ''}
+                  className="input"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="label">Source Data (JSON)</label>
+              <textarea name="sourceData" defaultValue={plant?.sourceData || ''} rows={8} className="input font-mono text-sm" />
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Admin Settings */}
       <div className="space-y-4">
         <SectionHeader title="Admin Settings" section="admin" />
@@ -868,7 +972,7 @@ export default function PlantsPage() {
         </button>
         <button 
           type="button" 
-          onClick={() => { setEditingPlant(null); setShowAddModal(false); }}
+          onClick={closeEditor}
           className="btn btn-secondary"
         >
           Cancel
@@ -893,6 +997,12 @@ export default function PlantsPage() {
         </button>
       </div>
 
+      {deepLinkError && (
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+          {deepLinkError}
+        </div>
+      )}
+
       {/* Add/Edit Modal */}
       {(showAddModal || editingPlant) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -902,7 +1012,7 @@ export default function PlantsPage() {
                 {editingPlant ? 'Edit Plant' : 'Add New Plant'}
               </h2>
               <button 
-                onClick={() => { setEditingPlant(null); setShowAddModal(false); }}
+                onClick={closeEditor}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
               >
                 <X className="w-5 h-5" />

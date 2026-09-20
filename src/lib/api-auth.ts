@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { timingSafeEqual } from 'node:crypto'
 
 /**
  * Validates API key authentication for admin endpoints
@@ -12,8 +13,6 @@ import { NextRequest, NextResponse } from 'next/server'
  * The API key should be sent in the Authorization header:
  *   Authorization: Bearer YOUR_API_KEY
  * 
- * Or as a query parameter (not recommended for production):
- *   ?api_key=YOUR_API_KEY
  */
 export function validateApiKey(req: NextRequest): { valid: true } | { valid: false; response: NextResponse } {
   const apiKey = process.env.ADMIN_API_KEY
@@ -43,17 +42,11 @@ export function validateApiKey(req: NextRequest): { valid: true } | { valid: fal
     }
   }
 
-  // Fallback to query parameter (less secure, but useful for testing)
-  if (!providedKey) {
-    const { searchParams } = new URL(req.url)
-    providedKey = searchParams.get('api_key')
-  }
-
   if (!providedKey) {
     return {
       valid: false,
       response: NextResponse.json(
-        { error: 'Missing API key. Provide it in the Authorization header (Bearer YOUR_KEY) or as api_key query parameter.' },
+        { error: 'Missing API key. Provide it in the Authorization header (Bearer YOUR_KEY).' },
         { status: 401 }
       )
     }
@@ -77,15 +70,9 @@ export function validateApiKey(req: NextRequest): { valid: true } | { valid: fal
  * Constant-time string comparison to prevent timing attacks
  */
 function secureCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    return false
-  }
-  
-  let result = 0
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  }
-  return result === 0
+  const left = Buffer.from(a)
+  const right = Buffer.from(b)
+  return left.length === right.length && timingSafeEqual(left, right)
 }
 
 /**

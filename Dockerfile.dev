@@ -1,7 +1,7 @@
 # GardenSeedTracker Development Dockerfile
 # For local development with hot reloading
 
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json* ./
 
 # Install all dependencies (including devDependencies)
-RUN npm install
+RUN npm ci
 
 # Copy Prisma schema
 COPY prisma ./prisma

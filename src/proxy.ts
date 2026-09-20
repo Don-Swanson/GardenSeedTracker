@@ -1,5 +1,6 @@
-import { withAuth } from 'next-auth/middleware'
-import { NextResponse } from 'next/server'
+import { withAuth, type NextRequestWithAuth } from 'next-auth/middleware'
+import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server'
+import { isTrustedMutation } from './lib/request-origin'
 
 // Routes that require authentication (pages)
 const protectedRoutes = [
@@ -27,7 +28,7 @@ const adminApiRoutes = [
   '/api/admin',
 ]
 
-export default withAuth(
+const authenticatedProxy = withAuth(
   function proxy(req) {
     const { pathname } = req.nextUrl
     const token = req.nextauth.token
@@ -73,6 +74,14 @@ export default withAuth(
   }
 )
 
+export default function proxy(request: NextRequest, event: NextFetchEvent) {
+  // Run before withAuth, which skips /api/auth/* (including custom endpoints).
+  if (request.nextUrl.pathname.startsWith('/api/') && !isTrustedMutation(request)) {
+    return NextResponse.json({ error: 'Cross-origin request denied' }, { status: 403 })
+  }
+  return authenticatedProxy(request as NextRequestWithAuth, event)
+}
+
 export const config = {
   matcher: [
     // Dashboard (protected)
@@ -86,11 +95,6 @@ export const config = {
     '/settings/:path*',
     '/plants/:path*',
     // Protected API routes
-    '/api/seeds/:path*',
-    '/api/plantings/:path*',
-    '/api/wishlist/:path*',
-    '/api/settings/:path*',
-    '/api/plants/:path*',
-    '/api/admin/:path*',
+    '/api/:path*',
   ],
 }

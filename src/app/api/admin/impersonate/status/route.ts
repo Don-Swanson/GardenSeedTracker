@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { cookies } from 'next/headers'
+import { prisma } from '@/lib/prisma'
+import { readImpersonationCookie } from '@/lib/impersonation'
 
 // GET /api/admin/impersonate/status - Check current impersonation status
 // Note: This endpoint is accessible to check if we're in an impersonation session
@@ -9,24 +11,24 @@ import { cookies } from 'next/headers'
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    if (!session?.user?.id || session.user.role !== 'admin') {
       return NextResponse.json({ impersonating: false })
     }
 
     const cookieStore = await cookies()
     const impersonationData = cookieStore.get('impersonation')
-    const adminSession = cookieStore.get('admin_session')
     
     if (impersonationData) {
       try {
-        const data = JSON.parse(impersonationData.value)
-        // Verify that the current session user matches either the admin or the impersonated user
-        // This allows checking status while impersonating
-        if (data.adminId === session.user.id || data.user?.id === session.user.id || adminSession) {
+        const userId = readImpersonationCookie(impersonationData.value, session.user.id)
+        const user = userId ? await prisma.user.findUnique({
+          where: { id: userId }, select: { id: true, name: true, email: true, role: true },
+        }) : null
+        if (user && user.role !== 'admin') {
           return NextResponse.json({
             impersonating: true,
-            user: data.user,
-            adminId: data.adminId
+            user,
+            adminId: session.user.id
           })
         }
       } catch {

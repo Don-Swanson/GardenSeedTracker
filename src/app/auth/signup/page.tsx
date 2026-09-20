@@ -1,14 +1,17 @@
 'use client'
 
+import { safeCallbackPath } from '@/lib/redirects'
+
 import { useState, useEffect, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Leaf, Mail, User, AtSign, AlertCircle, Sparkles, Loader2, Check } from 'lucide-react'
 
 function SignUpPageContent() {
+  const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+  const callbackUrl = safeCallbackPath(searchParams.get('callbackUrl'))
   
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
@@ -107,7 +110,7 @@ function SignUpPageContent() {
         setIsLoading(false)
       } else {
         // Redirect to verify request page
-        window.location.href = `/auth/verify-request?email=${encodeURIComponent(email)}&signup=true`
+        router.push(`/auth/verify-request?email=${encodeURIComponent(email)}&signup=true`)
       }
     } catch (error) {
       setErrorMessage('An error occurred. Please try again.')

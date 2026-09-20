@@ -49,14 +49,7 @@ export default function ImpersonatePage() {
     checkImpersonation()
   }, [])
 
-  // Fetch preselected user by ID
-  useEffect(() => {
-    if (preselectedUserId) {
-      fetchUserById(preselectedUserId)
-    }
-  }, [preselectedUserId])
-
-  const fetchUserById = async (userId: string) => {
+  async function fetchUserById(userId: string) {
     setLoading(true)
     try {
       const res = await fetch(`/api/admin/users/${userId}`)
@@ -77,6 +70,13 @@ export default function ImpersonatePage() {
       setLoading(false)
     }
   }
+
+  // Fetch preselected user by ID
+  useEffect(() => {
+    if (preselectedUserId) {
+      fetchUserById(preselectedUserId)
+    }
+  }, [preselectedUserId])
 
   const searchUsers = async (query: string) => {
     if (!query || query.length < 2) {
@@ -123,6 +123,7 @@ export default function ImpersonatePage() {
         setImpersonating(user)
         setImpersonationToken(data.token)
         // Redirect to dashboard as impersonated user
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Clear cached data when the impersonated identity changes.
         window.location.href = '/dashboard'
       } else {
         const error = await res.json()
@@ -146,6 +147,7 @@ export default function ImpersonatePage() {
         setImpersonating(null)
         setImpersonationToken(null)
         // Reload to restore admin session
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Clear cached data when the impersonated identity changes.
         window.location.href = '/admin'
       } else {
         const error = await res.json()

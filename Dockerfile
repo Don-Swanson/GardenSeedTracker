@@ -3,7 +3,7 @@
 
 ARG VERSION=dev
 # ==================== Dependencies Stage ====================
-FROM node:20-alpine AS deps
+FROM node:24-alpine AS deps
 RUN apk add --no-cache libc6-compat openssl openssl-dev
 WORKDIR /app
 
@@ -14,7 +14,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # ==================== Builder Stage ====================
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 ARG VERSION
 # Install OpenSSL for Prisma
 RUN apk add --no-cache openssl openssl-dev libc6-compat
@@ -36,8 +36,12 @@ ENV NEXT_PHASE=phase-production-build
 RUN npm run build
 
 LABEL org.opencontainers.image.version=${VERSION}
+# Keep database startup/import tooling and its complete runtime dependency tree.
+FROM deps AS runtime-deps
+RUN npm prune --omit=dev --ignore-scripts --no-audit --no-fund --offline
+
 # ==================== Runner Stage ====================
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
 # Install OpenSSL for Prisma runtime
 RUN apk add --no-cache openssl libc6-compat sqlite
 WORKDIR /app
@@ -60,16 +64,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Copy Prisma files for migrations
 COPY --from=builder /app/prisma ./prisma
+COPY --from=runtime-deps /app/node_modules ./node_modules
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/jiti ./node_modules/jiti
-COPY --from=builder /app/node_modules/tsx ./node_modules/tsx
-COPY --from=builder /app/node_modules/esbuild ./node_modules/esbuild
-COPY --from=builder /app/node_modules/@esbuild ./node_modules/@esbuild
-COPY --from=builder /app/node_modules/get-tsconfig ./node_modules/get-tsconfig
-COPY --from=builder /app/node_modules/resolve-pkg-maps ./node_modules/resolve-pkg-maps
-COPY --from=builder /app/node_modules/zod ./node_modules/zod
 
 # Create data directory for SQLite
 # Note: The volume mount will override this, but we need the directory structure

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { getAuthSession } from '@/lib/auth'
+import { sanitizeUrl } from '@/lib/validation'
 
 export async function GET(
   request: Request,
@@ -71,7 +72,7 @@ export async function PUT(
         brand: data.brand,
         estimatedPrice: data.estimatedPrice,
         priority: data.priority,
-        sourceUrl: data.sourceUrl,
+        sourceUrl: data.sourceUrl === undefined ? undefined : sanitizeUrl(data.sourceUrl),
         notes: data.notes,
         purchased: data.purchased,
         indoorStartWeeks: data.indoorStartWeeks,

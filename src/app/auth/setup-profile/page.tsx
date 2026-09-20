@@ -1,5 +1,7 @@
 'use client'
 
+import { safeCallbackPath } from '@/lib/redirects'
+
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -9,7 +11,7 @@ import { Leaf, User, AtSign, Check, X, Loader2, AlertCircle } from 'lucide-react
 function SetupProfileContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+  const callbackUrl = safeCallbackPath(searchParams.get('callbackUrl'))
   const { data: session, status, update } = useSession()
   
   const [name, setName] = useState('')

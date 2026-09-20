@@ -163,6 +163,7 @@ export default function UsersPage() {
       })
       
       if (res.ok) {
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Clear cached data when the impersonated identity changes.
         window.location.href = '/dashboard'
       } else {
         const error = await res.json()

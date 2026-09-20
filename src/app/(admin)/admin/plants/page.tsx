@@ -281,7 +281,7 @@ export default function PlantsPage() {
   }
 
   const handleDeletePlant = async (plant: Plant) => {
-    if (!confirm(`Delete "${plant.name}"? This will also remove it from any seeds that reference it.`)) {
+    if (!confirm(`Permanently delete "${plant.name}"? Linked seed and wishlist entries will keep the plant name as a custom entry.`)) {
       return
     }
 

@@ -28,7 +28,8 @@ import {
   Scissors,
   ExternalLink,
   LogIn,
-  Pencil
+  Pencil,
+  Trash2
 } from 'lucide-react'
 
 interface Recipe {
@@ -156,6 +157,7 @@ export default function PlantDetailPage() {
   
   const [plant, setPlant] = useState<Plant | null>(null)
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   
   // Suggestion modal state
@@ -237,6 +239,37 @@ export default function PlantDetailPage() {
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }
+
+  const handleDeletePlant = async () => {
+    if (!plant || deleting) return
+    setDeleting(true)
+    try {
+      const detailResponse = await fetch(`/api/admin/plants/${plant.id}`)
+      if (!detailResponse.ok) throw new Error('Could not inspect linked records')
+      const { plant: adminPlant } = await detailResponse.json()
+      const counts = adminPlant._count || { seeds: 0, wishlistItems: 0, suggestions: 0 }
+      const linked = counts.seeds + counts.wishlistItems
+      const impact = linked
+        ? `\n\n${counts.seeds} seed inventory item(s) and ${counts.wishlistItems} wishlist item(s) will keep “${plant.name}” as a custom plant.`
+        : ''
+      const suggestions = counts.suggestions
+        ? `\n${counts.suggestions} suggestion(s) attached to this encyclopedia entry will also be deleted.`
+        : ''
+      if (!window.confirm(`Permanently delete “${plant.name}” from the encyclopedia?${impact}${suggestions}`)) return
+
+      const response = await fetch(`/api/admin/plants/${plant.id}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const error = await response.json().catch(() => null)
+        throw new Error(error?.error || 'Failed to delete plant')
+      }
+      router.replace('/plants')
+      router.refresh()
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Failed to delete plant')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const handleSuggestionSubmit = async (e: React.FormEvent) => {
@@ -348,13 +381,24 @@ export default function PlantDetailPage() {
           
           <div className="flex flex-wrap items-center gap-2">
             {session?.user?.role === 'admin' && (
-              <Link
-                href={{ pathname: '/admin/plants', query: { edit: plant.id, returnTo: `/plants/${plant.id}` } }}
-                className="btn btn-primary flex items-center gap-2"
-              >
-                <Pencil className="w-4 h-4" />
-                Edit Plant
-              </Link>
+              <>
+                <Link
+                  href={{ pathname: '/admin/plants', query: { edit: plant.id, returnTo: `/plants/${plant.id}` } }}
+                  className="btn btn-primary flex items-center gap-2"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Edit Plant
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleDeletePlant}
+                  disabled={deleting}
+                  className="btn flex items-center gap-2 border border-red-300 bg-white text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-700 dark:bg-gray-800 dark:text-red-300 dark:hover:bg-red-950/30"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {deleting ? 'Deleting…' : 'Delete Plant'}
+                </button>
+              </>
             )}
             {session ? (
               <button

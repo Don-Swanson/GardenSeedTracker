@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { validateApiKey } from '@/lib/api-auth'
 import { createAuditLog } from '@/lib/audit'
+import { deletePlantPreservingReferences } from '@/lib/plant-delete'
 
 // GET /api/v1/admin/plants/[id] - Get a single plant
 export async function GET(
@@ -232,20 +233,14 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    const existing = await prisma.plantingGuide.findUnique({
-      where: { id }
-    })
+    const deleted = await prisma.$transaction(tx => deletePlantPreservingReferences(tx, id))
 
-    if (!existing) {
+    if (!deleted) {
       return NextResponse.json(
         { success: false, error: 'Plant not found' },
         { status: 404 }
       )
     }
-
-    await prisma.plantingGuide.delete({
-      where: { id }
-    })
 
     await createAuditLog({
       adminId: 'api',
@@ -253,12 +248,17 @@ export async function DELETE(
       action: 'delete_plant_via_api',
       targetType: 'plant',
       targetId: id,
-      details: { name: existing.name, category: existing.category }
+      details: {
+        name: deleted.plant.name,
+        category: deleted.plant.category,
+        affected: deleted.affected,
+      }
     })
 
     return NextResponse.json({
       success: true,
-      message: 'Plant deleted successfully'
+      message: 'Plant deleted successfully',
+      affected: deleted.affected,
     })
   } catch (error) {
     console.error('API Error - DELETE /api/v1/admin/plants/[id]:', error)

@@ -16,6 +16,7 @@ export type AuditAction =
   | 'approve_plant_request'
   | 'reject_plant_request'
   | 'edit_plant_request'
+  | 'delete_plant'
   | 'delete_user'
   | 'update_user_role'
   | 'update_user_details'

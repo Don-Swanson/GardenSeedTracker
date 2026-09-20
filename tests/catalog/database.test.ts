@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process'
 import { PrismaClient } from '@prisma/client'
 import { seedIfEmpty } from '../../scripts/database/seed-if-empty'
 import { CatalogRecord, importRecords, readCatalog } from '../../scripts/catalog/importer'
+import { deletePlantPreservingReferences } from '../../src/lib/plant-delete'
 
 const directory = mkdtempSync(join(tmpdir(), 'gst-catalog-test-'))
 const url = `file:${directory}/garden.db`
@@ -83,6 +84,35 @@ test('a database with settings but no plants is not empty', async () => {
   await prisma.plantingGuide.deleteMany()
   assert.equal(await seedIfEmpty(prisma, async () => { throw new Error('must not seed over existing account') }), false)
   assert.equal(await prisma.plantingGuide.count(), 0)
+})
+
+test('deleting a plant preserves linked inventory as custom entries', async () => {
+  const user = await prisma.user.upsert({
+    where: { email: 'delete-preservation@example.test' },
+    update: {},
+    create: { email: 'delete-preservation@example.test' },
+  })
+  const plant = await prisma.plantingGuide.create({
+    data: { name: 'Delete preservation plant', category: 'vegetable' },
+  })
+  const seed = await prisma.seed.create({ data: { userId: user.id, plantTypeId: plant.id } })
+  const wishlist = await prisma.wishlistItem.create({ data: { userId: user.id, plantTypeId: plant.id } })
+  await prisma.plantSuggestion.create({
+    data: { plantId: plant.id, section: 'general', suggestionType: 'addition', suggestedContent: 'Test' },
+  })
+
+  const deleted = await prisma.$transaction(tx => deletePlantPreservingReferences(tx, plant.id))
+  assert.deepEqual(deleted?.affected, { seeds: 1, wishlistItems: 1, suggestions: 1 })
+  assert.equal(await prisma.plantingGuide.findUnique({ where: { id: plant.id } }), null)
+  assert.deepEqual(
+    await prisma.seed.findUnique({ where: { id: seed.id }, select: { plantTypeId: true, customPlantName: true, customCategory: true } }),
+    { plantTypeId: null, customPlantName: plant.name, customCategory: plant.category },
+  )
+  assert.deepEqual(
+    await prisma.wishlistItem.findUnique({ where: { id: wishlist.id }, select: { plantTypeId: true, customPlantName: true } }),
+    { plantTypeId: null, customPlantName: plant.name },
+  )
+  assert.equal(await prisma.plantSuggestion.count({ where: { plantId: plant.id } }), 0)
 })
 
 test('input validation rejects malformed and duplicate source identities', () => {

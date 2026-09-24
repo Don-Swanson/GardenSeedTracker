@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { checkUsernameAvailability } from '@/lib/username'
 
 // Store signup data (name, username) temporarily for a new user
 // This data will be applied when the user clicks the magic link
@@ -13,6 +15,10 @@ export async function POST(req: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim()
 
+    // Opportunistic cleanup: expired signup attempts should never block a
+    // later signup (including one reusing the same username or email).
+    await prisma.signupData.deleteMany({ where: { expiresAt: { lt: new Date() } } })
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -25,55 +31,41 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    // If username is provided, validate and check availability
+    let normalizedUsername: string | null = null
     if (username) {
-      const normalizedUsername = username.toLowerCase().trim()
-      
-      // Validate format
-      const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
-      if (!usernameRegex.test(normalizedUsername)) {
-        return NextResponse.json({ error: 'Invalid username format' }, { status: 400 })
+      // Exclude our own pending row so re-submitting the form (e.g. changing
+      // your name) doesn't get rejected for "taking" the username you already reserved.
+      const result = await checkUsernameAvailability(prisma, username, { excludeSignupEmail: normalizedEmail })
+      if (!result.available) {
+        return NextResponse.json({ error: result.error }, { status: 400 })
       }
-
-      // Check reserved usernames
-      const reservedUsernames = [
-        'admin', 'administrator', 'root', 'system', 'support', 'help',
-        'gardenseed', 'gardenseedtracker', 'staff', 'moderator', 'mod',
-        'official', 'team', 'api', 'www', 'mail', 'email', 'info',
-        'contact', 'null', 'undefined', 'anonymous', 'guest', 'user'
-      ]
-      
-      if (reservedUsernames.includes(normalizedUsername)) {
-        return NextResponse.json({ error: 'This username is reserved' }, { status: 400 })
-      }
-
-      // Check if username is taken
-      const existingUsername = await prisma.user.findUnique({
-        where: { username: normalizedUsername },
-        select: { id: true }
-      })
-
-      if (existingUsername) {
-        return NextResponse.json({ error: 'Username is already taken' }, { status: 400 })
-      }
+      normalizedUsername = result.normalized
     }
 
-    // Store the signup data in a temporary table or use existing approach
-    // We'll use the SignupData model to store this temporarily
-    await prisma.signupData.upsert({
-      where: { email: normalizedEmail },
-      update: {
-        name: name.trim(),
-        username: username?.toLowerCase().trim() || null,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-      },
-      create: {
-        email: normalizedEmail,
-        name: name.trim(),
-        username: username?.toLowerCase().trim() || null,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-      },
-    })
+    try {
+      // Store the signup data temporarily; applied when the magic link is clicked.
+      await prisma.signupData.upsert({
+        where: { email: normalizedEmail },
+        update: {
+          name: name.trim(),
+          username: normalizedUsername,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        },
+        create: {
+          email: normalizedEmail,
+          name: name.trim(),
+          username: normalizedUsername,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        },
+      })
+    } catch (error) {
+      // Someone else reserved the same username in the race window between
+      // our availability check above and this write.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return NextResponse.json({ error: 'This username was just taken. Please choose another.' }, { status: 409 })
+      }
+      throw error
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

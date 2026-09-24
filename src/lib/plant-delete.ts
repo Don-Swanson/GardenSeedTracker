@@ -8,7 +8,7 @@ export async function deletePlantPreservingReferences(
     where: { id: plantId },
     include: {
       _count: {
-        select: { seeds: true, wishlistItems: true, suggestions: true },
+        select: { seeds: true, wishlistItems: true, suggestions: true, swapListings: true },
       },
     },
   })
@@ -36,6 +36,14 @@ export async function deletePlantPreservingReferences(
     where: { plantTypeId: plantId },
     data: { plantTypeId: null },
   })
+  await tx.swapListing.updateMany({
+    where: { plantTypeId: plantId, customPlantName: null },
+    data: { customPlantName: plant.name },
+  })
+  await tx.swapListing.updateMany({
+    where: { plantTypeId: plantId },
+    data: { plantTypeId: null },
+  })
   await tx.plantingGuide.delete({ where: { id: plantId } })
 
   return {
@@ -44,6 +52,7 @@ export async function deletePlantPreservingReferences(
       seeds: plant._count.seeds,
       wishlistItems: plant._count.wishlistItems,
       suggestions: plant._count.suggestions,
+      swapListings: plant._count.swapListings,
     },
   }
 }

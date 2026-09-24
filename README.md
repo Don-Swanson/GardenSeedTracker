@@ -88,8 +88,18 @@ See `.env.example` for all options. Key variables:
 - `EMAIL_SERVER_*` – SMTP config for magic link emails
 - `EMAIL_FROM` – From address for emails
 - `IPGEO_API_KEY` – (Optional) For accurate astronomy data (ipgeolocation.io)
-- `CRON_SECRET` – (Optional) For securing scheduled jobs
+- `CRON_SECRET` – (Optional) Required to enable the daily planting-reminder emails (`/api/cron/planting-reminders`); the endpoint refuses to run without it
 - `ADMIN_API_KEY` – (Optional) For admin API endpoints
+
+### Planting Reminder Scheduling
+
+Planting reminder emails (indoor start, direct sow, transplant and fall direct-sow) are sent by a daily job hitting `POST /api/cron/planting-reminders` with `Authorization: Bearer $CRON_SECRET`.
+
+- **Vercel**: already scheduled via `vercel.json` (`0 9 * * *` UTC) - just set `CRON_SECRET` in your project's environment variables.
+- **Docker / self-hosted**: `docker-compose.yml` includes a `scheduler` service that calls the same endpoint daily (default 13:00 UTC, override with `REMINDER_TIME=HH:MM`). It logs a warning and does nothing if `CRON_SECRET` isn't set - no separate host crontab needed.
+- **Other setups**: call the endpoint yourself on any schedule, e.g. a host crontab entry: `0 9 * * * curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://your-domain/api/cron/planting-reminders`.
+
+Reminders are on by default for new accounts (indoor start, direct sow, transplant and fall direct-sow); wishlist items are opt-in separately. All of this is configurable per-account in Settings.
 
 ## 🛠 Project Structure
 

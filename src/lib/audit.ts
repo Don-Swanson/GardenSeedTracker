@@ -17,6 +17,10 @@ export type AuditAction =
   | 'reject_plant_request'
   | 'edit_plant_request'
   | 'delete_plant'
+  | 'hide_swap_listing'
+  | 'unhide_swap_listing'
+  | 'resolve_swap_report'
+  | 'dismiss_swap_report'
   | 'delete_user'
   | 'update_user_role'
   | 'update_user_details'
@@ -38,6 +42,8 @@ export type AuditTargetType =
   | 'planting'
   | 'wishlist'
   | 'plant_request'
+  | 'swap_listing'
+  | 'swap_report'
 
 export interface AuditLogEntry {
   adminId: string

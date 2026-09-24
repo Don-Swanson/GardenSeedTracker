@@ -72,6 +72,10 @@ async function sendVerificationRequest({
 const ONE_DAY = 24 * 60 * 60 // 1 day in seconds
 const ONE_YEAR = 365 * 24 * 60 * 60 // 1 year in seconds
 
+// Only write lastActiveAt when it's stale by more than this, so we don't
+// hit the database on every single request that reads the session.
+const LAST_ACTIVE_THROTTLE_MS = 15 * 60 * 1000 // 15 minutes
+
 // Check if we're in production - either by NODE_ENV or by detecting HTTPS in NEXTAUTH_URL
 const IS_PRODUCTION = process.env.NODE_ENV === 'production' || 
   process.env.NEXTAUTH_URL?.startsWith('https://')
@@ -127,13 +131,32 @@ export const authOptions: NextAuthOptions = {
       const id = user?.id || token.id
       const dbUser = id ? await prisma.user.findUnique({
         where: { id },
-        select: { id: true, role: true, email: true, name: true },
+        select: { id: true, role: true, email: true, name: true, lastActiveAt: true, onboardedAt: true },
       }) : null
       if (!dbUser) throw new Error('Session account no longer exists')
       token.id = dbUser.id
       token.role = dbUser.role
       token.email = dbUser.email
       token.name = dbUser.name
+      token.onboardedAt = dbUser.onboardedAt ? dbUser.onboardedAt.toISOString() : null
+
+      // Throttled "last active" tracking - cheap enough to run on every
+      // session read since it's skipped unless the stored value is stale.
+      const isStale = !dbUser.lastActiveAt || Date.now() - dbUser.lastActiveAt.getTime() > LAST_ACTIVE_THROTTLE_MS
+      if (isStale) {
+        // Awaited (not fire-and-forget): on serverless platforms the function
+        // can be frozen/terminated right after the response is sent, so an
+        // un-awaited write here would be silently dropped most of the time.
+        try {
+          await prisma.user.update({
+            where: { id: dbUser.id },
+            data: { lastActiveAt: new Date() },
+          })
+        } catch (err) {
+          console.error('Failed to update lastActiveAt:', err)
+        }
+      }
+
       return token
     },
     async session({ session, token }) {
@@ -143,6 +166,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string
         session.user.email = token.email
         session.user.name = token.name
+        session.user.onboardedAt = token.onboardedAt ?? null
       }
       return session
     },
@@ -172,12 +196,15 @@ export const authOptions: NextAuthOptions = {
         })
         
         if (signupData && signupData.expiresAt > new Date()) {
-          // Apply the signup data to the new user
+          // Apply the signup data to the new user. Since they already went
+          // through the guided /auth/signup form, mark onboarding complete -
+          // they won't be redirected to /auth/setup-profile.
           await prisma.user.update({
             where: { id: user.id },
             data: {
               name: signupData.name,
               username: signupData.username,
+              onboardedAt: new Date(),
             }
           })
           
@@ -186,6 +213,10 @@ export const authOptions: NextAuthOptions = {
             where: { email: user.email.toLowerCase() }
           })
         }
+        // No pending signup data means this account was created directly
+        // (e.g. Google OAuth, or a magic link for an email that never went
+        // through /auth/signup) - leave onboardedAt null so they're guided
+        // through setup-profile once.
       }
       
       // Create default user settings when a new user signs up
@@ -231,6 +262,7 @@ export async function getAuthSession() {
               email: true,
               name: true,
               role: true,
+              onboardedAt: true,
             }
           })
           
@@ -244,6 +276,7 @@ export async function getAuthSession() {
                 email: impersonatedUser.email,
                 name: impersonatedUser.name,
                 role: impersonatedUser.role,
+                onboardedAt: impersonatedUser.onboardedAt ? impersonatedUser.onboardedAt.toISOString() : null,
                 // Keep track that this is an impersonation session
                 isImpersonating: true,
                 originalAdminId: session.user.id,

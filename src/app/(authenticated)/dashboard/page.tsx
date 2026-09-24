@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/prisma'
-import { getMoonPhase, getCurrentSeason, seasonalTips, formatDate, hardinessZones, parseFrostDate } from '@/lib/garden-utils'
+import { getCurrentSeason, seasonalTips, formatDate, hardinessZones, getEffectiveLastFrostDate, getEffectiveFirstFrostDate } from '@/lib/garden-utils'
+import { getMoonPhaseCalculated } from '@/lib/moon'
+import { computePlantingReminders, type ReminderPlantInput } from '@/lib/planting-reminders'
 import Link from 'next/link'
 import { 
   Package, 
@@ -10,8 +12,10 @@ import {
   Sun,
   Droplets,
   Thermometer,
+  Sprout,
   ArrowRight
 } from 'lucide-react'
+import { startOfDay } from 'date-fns'
 
 import { getAuthSession } from '@/lib/auth'
 
@@ -19,7 +23,7 @@ import { getAuthSession } from '@/lib/auth'
 export const dynamic = 'force-dynamic'
 
 async function getDashboardData(userId: string) {
-  const [seeds, plantings, wishlistItems, settings] = await Promise.all([
+  const [seeds, plantings, wishlistItems, settings, inStockSeeds, wishlistForReminders] = await Promise.all([
     prisma.seed.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -42,6 +46,17 @@ async function getDashboardData(userId: string) {
       take: 5,
     }),
     prisma.userSettings.findFirst({ where: { userId } }),
+    // Full in-stock inventory (not just the 5 most recent above) for the
+    // "Plant This Week" card - same "in stock" definition the reminder
+    // emails use.
+    prisma.seed.findMany({
+      where: { userId, isArchived: false, quantity: { gt: 0 } },
+      include: { plantType: true },
+    }),
+    prisma.wishlistItem.findMany({
+      where: { userId, purchased: false },
+      include: { plantType: true },
+    }),
   ])
 
   const seedCount = await prisma.seed.count({ where: { userId } })
@@ -60,6 +75,8 @@ async function getDashboardData(userId: string) {
     plantings,
     wishlistItems,
     settings,
+    inStockSeeds,
+    wishlistForReminders,
     stats: {
       seedCount,
       activePlantings,
@@ -73,18 +90,73 @@ export default async function Dashboard() {
   if (!session?.user?.id) {
     return <div>Please sign in to view your dashboard.</div>
   }
-  const { seeds, plantings, wishlistItems, settings, stats } = await getDashboardData(session.user.id)
+  const { seeds, plantings, wishlistItems, settings, inStockSeeds, wishlistForReminders, stats } = await getDashboardData(session.user.id)
   
   const today = new Date()
-  const moonPhase = getMoonPhase(today)
+  // Shared with the Almanac page's fallback calculation, instead of a
+  // separate (and previously slightly different) copy of the same math.
+  const moonPhase = getMoonPhaseCalculated(today)
   const currentSeason = getCurrentSeason(today)
   const tips = seasonalTips[currentSeason]
   
-  // Get frost dates from zone
+  // Get frost dates - a custom date the user set in Settings takes priority
+  // over the zone average, same resolution the reminder emails use.
   const zone = settings?.hardinessZone || '7a'
   const zoneInfo = hardinessZones[zone]
-  const lastFrost = zoneInfo ? parseFrostDate(zoneInfo.lastFrostSpring, today.getFullYear()) : null
-  const firstFrost = zoneInfo ? parseFrostDate(zoneInfo.firstFrostFall, today.getFullYear()) : null
+  const lastFrost = getEffectiveLastFrostDate(settings, today.getFullYear())
+  const firstFrost = getEffectiveFirstFrostDate(settings, today.getFullYear())
+
+  // "Plant This Week" - the same reminder computation the daily email cron
+  // uses, shown right in the app instead of only by email.
+  const reminderPlants: ReminderPlantInput[] = [
+    ...inStockSeeds.map((seed): ReminderPlantInput => ({
+      key: `seed:${seed.id}`,
+      plantName: seed.plantType?.name || seed.customPlantName || seed.nickname || 'Unknown Plant',
+      variety: seed.variety,
+      category: seed.plantType?.category || seed.customCategory,
+      source: 'seed',
+      indoorStartWeeks: seed.plantType?.indoorStartWeeks ?? null,
+      outdoorStartWeeks: seed.plantType?.outdoorStartWeeks ?? null,
+      transplantWeeks: seed.plantType?.transplantWeeks ?? null,
+      daysToMaturity: seed.plantType?.daysToMaturity ?? seed.daysToMaturity ?? null,
+      overrideIndoorStart: seed.enableIndoorStartReminder,
+      overrideDirectSow: seed.enableDirectSowReminder,
+      overrideTransplant: seed.enableTransplantReminder,
+    })),
+    ...(settings?.enableWishlistReminders ? wishlistForReminders.map((item): ReminderPlantInput => ({
+      key: `wishlist:${item.id}`,
+      plantName: item.plantType?.name || item.customPlantName || 'Unknown Plant',
+      variety: item.variety,
+      category: item.plantType?.category ?? null,
+      source: 'wishlist',
+      indoorStartWeeks: item.plantType?.indoorStartWeeks ?? item.indoorStartWeeks ?? null,
+      outdoorStartWeeks: item.plantType?.outdoorStartWeeks ?? item.outdoorStartWeeks ?? null,
+      transplantWeeks: item.plantType?.transplantWeeks ?? null,
+      daysToMaturity: item.plantType?.daysToMaturity ?? null,
+    })) : []),
+  ]
+  const upcomingPlantings = computePlantingReminders({
+    plants: reminderPlants,
+    today: startOfDay(today),
+    reminderLeadDays: 14,
+    lastFrostDate: lastFrost,
+    firstFrostDate: firstFrost,
+    globalReminders: {
+      // Always show what's due this dashboard card regardless of whether
+      // email reminders are turned on - those two are independent controls.
+      indoorStart: true,
+      directSow: true,
+      transplant: true,
+      fallDirectSow: true,
+    },
+  }).sort((a, b) => a.plantingDate.getTime() - b.plantingDate.getTime())
+
+  const reminderTypeLabels: Record<string, string> = {
+    indoor_start: 'Start indoors',
+    direct_sow: 'Direct sow',
+    transplant: 'Transplant',
+    fall_direct_sow: 'Fall direct sow',
+  }
 
   return (
     <div className="space-y-8">
@@ -223,6 +295,37 @@ export default async function Dashboard() {
 
         {/* Right Column - 1/3 width */}
         <div className="space-y-6">
+          {/* Plant This Week */}
+          {upcomingPlantings.length > 0 && (
+            <div className="card border-l-4 border-garden-500">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Sprout className="w-5 h-5 text-garden-600 dark:text-garden-400" />
+                Plant This Week
+              </h2>
+              <ul className="space-y-3">
+                {upcomingPlantings.slice(0, 6).map((reminder, index) => (
+                  <li key={`${reminder.plantKey}-${reminder.type}-${index}`} className="flex items-start justify-between gap-3 text-sm">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {reminder.plantName}{reminder.variety ? ` (${reminder.variety})` : ''}
+                      </p>
+                      <p className="text-gray-500 dark:text-gray-400">
+                        {reminderTypeLabels[reminder.type]} · {formatDate(reminder.plantingDate)}
+                        {reminder.source === 'wishlist' ? ' · wishlist' : ''}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/calendar"
+                className="block text-center text-sm text-garden-600 dark:text-garden-400 hover:text-garden-700 dark:hover:text-garden-300 mt-4"
+              >
+                View full calendar →
+              </Link>
+            </div>
+          )}
+
           {/* Moon Phase */}
           <div className="card">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">

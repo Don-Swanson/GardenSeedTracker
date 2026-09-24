@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { after, before, test } from 'node:test'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { execFileSync } from 'node:child_process'
@@ -97,12 +97,13 @@ test('deleting a plant preserves linked inventory as custom entries', async () =
   })
   const seed = await prisma.seed.create({ data: { userId: user.id, plantTypeId: plant.id } })
   const wishlist = await prisma.wishlistItem.create({ data: { userId: user.id, plantTypeId: plant.id } })
+  const swapListing = await prisma.swapListing.create({ data: { userId: user.id, plantTypeId: plant.id, type: 'offer' } })
   await prisma.plantSuggestion.create({
     data: { plantId: plant.id, section: 'general', suggestionType: 'addition', suggestedContent: 'Test' },
   })
 
   const deleted = await prisma.$transaction(tx => deletePlantPreservingReferences(tx, plant.id))
-  assert.deepEqual(deleted?.affected, { seeds: 1, wishlistItems: 1, suggestions: 1 })
+  assert.deepEqual(deleted?.affected, { seeds: 1, wishlistItems: 1, suggestions: 1, swapListings: 1 })
   assert.equal(await prisma.plantingGuide.findUnique({ where: { id: plant.id } }), null)
   assert.deepEqual(
     await prisma.seed.findUnique({ where: { id: seed.id }, select: { plantTypeId: true, customPlantName: true, customCategory: true } }),
@@ -110,6 +111,10 @@ test('deleting a plant preserves linked inventory as custom entries', async () =
   )
   assert.deepEqual(
     await prisma.wishlistItem.findUnique({ where: { id: wishlist.id }, select: { plantTypeId: true, customPlantName: true } }),
+    { plantTypeId: null, customPlantName: plant.name },
+  )
+  assert.deepEqual(
+    await prisma.swapListing.findUnique({ where: { id: swapListing.id }, select: { plantTypeId: true, customPlantName: true } }),
     { plantTypeId: null, customPlantName: plant.name },
   )
   assert.equal(await prisma.plantSuggestion.count({ where: { plantId: plant.id } }), 0)
@@ -156,17 +161,26 @@ test('adopting a legacy database preserves columns unknown to the current schema
     }
     await legacy.$executeRawUnsafe('ALTER TABLE "User" ADD COLUMN "legacySetting" TEXT')
     await legacy.$executeRawUnsafe(`INSERT INTO "User" (id, email, updatedAt, legacySetting) VALUES ('legacy-user', 'legacy@example.test', CURRENT_TIMESTAMP, 'keep this setting')`)
-    const before = await legacy.$queryRawUnsafe('SELECT * FROM "User"')
+    const before = await legacy.$queryRawUnsafe<Array<Record<string, unknown>>>('SELECT * FROM "User"')
     await legacy.$disconnect()
     for (let attempt = 0; attempt < 2; attempt++) {
       execFileSync(process.execPath, ['--import', 'tsx', 'scripts/database/initialize.ts'], {
         env: { ...process.env, DATABASE_URL: legacyUrl }, stdio: 'pipe',
       })
     }
-    assert.deepEqual(await legacy.$queryRawUnsafe('SELECT * FROM "User"'), before)
+    // Later migrations may add new nullable columns to User (e.g. lastActiveAt) -
+    // adoption must leave every pre-existing column/value untouched, but the row
+    // is allowed to gain new columns it didn't have before.
+    const after = await legacy.$queryRawUnsafe<Array<Record<string, unknown>>>('SELECT * FROM "User"')
+    assert.deepEqual(
+      after.map(row => Object.fromEntries(Object.keys(before[0]).map(key => [key, row[key]]))),
+      before,
+    )
     const columns = await legacy.$queryRawUnsafe<Array<{ name: string }>>('PRAGMA table_info("PlantingGuide")')
     assert.ok(columns.some(column => column.name === 'sourceId'))
+    const migrationCount = readdirSync('prisma/migrations', { withFileTypes: true })
+      .filter(entry => entry.isDirectory()).length
     const history = await legacy.$queryRawUnsafe<unknown[]>('SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL')
-    assert.equal(history.length, 2)
+    assert.equal(history.length, migrationCount)
   } finally { await legacy.$disconnect() }
 })

@@ -10,6 +10,7 @@ interface NotificationSettings {
   newPlantSubmission: boolean
   newPlantSuggestion: boolean
   newPlantRequest: boolean
+  newSwapReport: boolean
   dailyDigest: boolean
   weeklyDigest: boolean
   errorAlerts: boolean
@@ -21,6 +22,7 @@ const defaultSettings: NotificationSettings = {
   newPlantSubmission: true,
   newPlantSuggestion: true,
   newPlantRequest: true,
+  newSwapReport: true,
   dailyDigest: false,
   weeklyDigest: true,
   errorAlerts: true,
@@ -42,6 +44,7 @@ const notificationGroups = [
       { key: 'newPlantSubmission', label: 'New plant submissions', description: 'When a user submits a new plant for review' },
       { key: 'newPlantSuggestion', label: 'Plant update suggestions', description: 'When a user suggests an update to plant info' },
       { key: 'newPlantRequest', label: 'Plant requests', description: 'When a user requests a new plant to be added' },
+      { key: 'newSwapReport', label: 'Swap board reports', description: 'When a user reports a swap board listing or message' },
     ]
   },
   {
@@ -115,6 +118,7 @@ export default function AdminNotificationSettingsPage() {
       newPlantSubmission: true,
       newPlantSuggestion: true,
       newPlantRequest: true,
+      newSwapReport: true,
       dailyDigest: true,
       weeklyDigest: true,
       errorAlerts: true,
@@ -129,6 +133,7 @@ export default function AdminNotificationSettingsPage() {
       newPlantSubmission: false,
       newPlantSuggestion: false,
       newPlantRequest: false,
+      newSwapReport: false,
       dailyDigest: false,
       weeklyDigest: false,
       errorAlerts: false,

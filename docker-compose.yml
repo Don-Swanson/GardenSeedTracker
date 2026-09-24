@@ -60,5 +60,40 @@ services:
     networks:
       - garden-network
 
+  # Self-hosted installs have no equivalent of Vercel Cron, so this triggers
+  # the same daily cron endpoints from inside the compose network.
+  # No-op (with a log message) if CRON_SECRET isn't set.
+  scheduler:
+    image: curlimages/curl:8.11.0
+    container_name: garden-seed-tracker-scheduler
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      - CRON_SECRET=${CRON_SECRET:-}
+      - REMINDER_URL=http://app:3000/api/cron/planting-reminders
+      - SWAP_EXPIRY_URL=http://app:3000/api/cron/expire-swap-listings
+      # 24-hour "HH:MM", in the container's UTC clock
+      - REMINDER_TIME=${REMINDER_TIME:-13:00}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -z "$$CRON_SECRET" ]; then
+          echo "[scheduler] CRON_SECRET is not set - planting reminder emails will not be sent, and swap listings will not expire. Set CRON_SECRET in your .env to enable them."
+        fi
+        echo "[scheduler] Will POST $$REMINDER_URL and $$SWAP_EXPIRY_URL daily at $$REMINDER_TIME UTC"
+        while true; do
+          if [ "$(date -u +%H:%M)" = "$$REMINDER_TIME" ] && [ -n "$$CRON_SECRET" ]; then
+            echo "[scheduler] Running planting-reminders cron"
+            curl -fsS -X POST -H "Authorization: Bearer $$CRON_SECRET" "$$REMINDER_URL" || echo "[scheduler] Request failed"
+            echo "[scheduler] Running expire-swap-listings cron"
+            curl -fsS -X POST -H "Authorization: Bearer $$CRON_SECRET" "$$SWAP_EXPIRY_URL" || echo "[scheduler] Request failed"
+            sleep 60
+          fi
+          sleep 30
+        done
+    networks:
+      - garden-network
+
 networks:
   garden-network:

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog, AuditAction } from '@/lib/audit'
+import { checkUsernameAvailability } from '@/lib/username'
+import { sanitizeEmail, MAX_LENGTHS } from '@/lib/validation'
 
 // GET /api/admin/users/[id] - Get single user details
 export async function GET(
@@ -72,40 +75,92 @@ export async function PATCH(
     }
 
     let updateData: any = {}
-    let actionType = ''
+    let actionType: AuditAction = 'update_user_role'
+    let auditDetails: Record<string, unknown> = { action }
+    let responseUser: { id: string; name: string | null; username: string | null; email: string } | undefined
 
     switch (action) {
       case 'makeAdmin':
         updateData = { role: 'admin' }
-        actionType = 'update_user_role'
+        auditDetails.role = updateData.role
         break
       case 'removeAdmin':
         if (user.id === session.user.id) {
           return NextResponse.json({ error: 'Cannot remove your own admin role' }, { status: 400 })
         }
         updateData = { role: 'user' }
-        actionType = 'update_user_role'
+        auditDetails.role = updateData.role
         break
+      case 'updateDetails': {
+        // Plain trim (not sanitizeString's HTML-entity encoding) - names are
+        // rendered through React elsewhere, which already escapes them.
+        const rawName = typeof data.name === 'string' ? data.name.trim() : ''
+        if (rawName.length > MAX_LENGTHS.name) {
+          return NextResponse.json({ error: 'Name is too long' }, { status: 400 })
+        }
+        const name = rawName || null
+
+        let normalizedUsername: string | null = null
+        if (data.username) {
+          const result = await checkUsernameAvailability(prisma, data.username, { excludeUserId: id })
+          if (!result.available) {
+            return NextResponse.json({ error: result.error }, { status: 400 })
+          }
+          normalizedUsername = result.normalized
+        }
+
+        const email = sanitizeEmail(data.email)
+        if (!email) {
+          return NextResponse.json({ error: 'A valid email is required' }, { status: 400 })
+        }
+        if (email !== user.email) {
+          const existingEmail = await prisma.user.findFirst({ where: { email, NOT: { id } }, select: { id: true } })
+          if (existingEmail) {
+            return NextResponse.json({ error: 'Another account already uses this email' }, { status: 400 })
+          }
+        }
+
+        updateData = { name, username: normalizedUsername, email }
+        actionType = 'update_user_details'
+        auditDetails = {
+          action,
+          previousName: user.name,
+          previousUsername: user.username,
+          previousEmail: user.email,
+          name,
+          username: normalizedUsername,
+          email,
+        }
+        break
+      }
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
-    await prisma.user.update({
-      where: { id },
-      data: updateData
-    })
+    try {
+      responseUser = await prisma.user.update({
+        where: { id },
+        data: updateData,
+        select: { id: true, name: true, username: true, email: true },
+      })
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return NextResponse.json({ error: 'That username or email is already in use' }, { status: 409 })
+      }
+      throw error
+    }
 
     await createAuditLog({
       adminId: session.user.id,
       adminEmail: session.user.email || '',
-      action: actionType as AuditAction,
+      action: actionType,
       targetType: 'user',
       targetId: id,
-      targetEmail: user.email,
-      details: { action, role: updateData.role }
+      targetEmail: responseUser.email,
+      details: auditDetails
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, user: responseUser })
   } catch (error) {
     console.error('Error updating user:', error)
     return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })

@@ -2,8 +2,9 @@ import { generatePlantingReminderEmailHtml, type PlantReminder } from '@/lib/pla
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Resend } from 'resend'
-import { addWeeks, format, isWithinInterval, startOfDay, addDays } from 'date-fns'
-import { hardinessZones, parseFrostDate } from '@/lib/garden-utils'
+import { format, startOfDay } from 'date-fns'
+import { getEffectiveFirstFrostDate, getEffectiveLastFrostDate } from '@/lib/garden-utils'
+import { computePlantingReminders, type ReminderPlantInput } from '@/lib/planting-reminders'
 
 // Lazily initialize Resend to avoid build-time errors
 let resend: Resend | null = null
@@ -15,8 +16,10 @@ function getResendClient() {
 }
 
 // Cron job endpoint to send planting reminder emails
-// This should be called daily by your cron service (e.g., Vercel Cron, GitHub Actions, etc.)
-// 
+// This should be called daily by your cron service (Vercel Cron in
+// production; for self-hosted/Docker installs see the `scheduler` service in
+// docker-compose.yml, which curls this endpoint on the same schedule).
+//
 // POST /api/cron/planting-reminders
 export async function POST(request: Request) {
   try {
@@ -37,13 +40,31 @@ export async function POST(request: Request) {
     const currentYear = new Date().getFullYear()
     const today = startOfDay(new Date())
 
-    // Find users who have planting reminders enabled (global or individual)
+    // A single cohort: anyone who could plausibly have a reminder to send -
+    // any global toggle on, or a per-seed override on. This replaces two
+    // separate queries/loops that duplicated the same date math and, because
+    // they were mutually exclusive, silently ignored a per-seed override for
+    // any reminder type once a user had *any* global reminder enabled.
     const usersWithSettings = await prisma.userSettings.findMany({
       where: {
         OR: [
           { enableIndoorStartReminders: true },
           { enableDirectSowReminders: true },
           { enableTransplantReminders: true },
+          { enableFallReminders: true },
+          {
+            user: {
+              seeds: {
+                some: {
+                  OR: [
+                    { enableIndoorStartReminder: true },
+                    { enableDirectSowReminder: true },
+                    { enableTransplantReminder: true },
+                  ],
+                },
+              },
+            },
+          },
         ],
       },
       include: {
@@ -52,8 +73,9 @@ export async function POST(request: Request) {
             id: true,
             email: true,
             name: true,
+            // "In your stock": excludes archived seeds and ones you're out of.
             seeds: {
-              where: { isArchived: false },
+              where: { isArchived: false, quantity: { gt: 0 } },
               include: { plantType: true },
             },
             wishlistItems: {
@@ -65,44 +87,6 @@ export async function POST(request: Request) {
       },
     })
 
-    // Also find users with individual seed reminders enabled (but no global reminders)
-    const usersWithIndividualReminders = await prisma.user.findMany({
-      where: {
-        seeds: {
-          some: {
-            OR: [
-              { enableIndoorStartReminder: true },
-              { enableDirectSowReminder: true },
-              { enableTransplantReminder: true },
-            ],
-            isArchived: false,
-          },
-        },
-        settings: {
-          enableIndoorStartReminders: false,
-          enableDirectSowReminders: false,
-          enableTransplantReminders: false,
-        },
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        settings: true,
-        seeds: {
-          where: {
-            isArchived: false,
-            OR: [
-              { enableIndoorStartReminder: true },
-              { enableDirectSowReminder: true },
-              { enableTransplantReminder: true },
-            ],
-          },
-          include: { plantType: true },
-        },
-      },
-    })
-
     const results = {
       sent: 0,
       failed: 0,
@@ -110,7 +94,6 @@ export async function POST(request: Request) {
       errors: [] as string[],
     }
 
-    // Process users with global reminders enabled
     for (const settings of usersWithSettings) {
       const user = settings.user
       if (!user.email) {
@@ -118,207 +101,69 @@ export async function POST(request: Request) {
         continue
       }
 
-      const lastFrostDate = getLastFrostDate(settings, currentYear)
-      if (!lastFrostDate) {
+      const lastFrostDate = getEffectiveLastFrostDate(settings, currentYear)
+      const firstFrostDate = getEffectiveFirstFrostDate(settings, currentYear)
+      if (!lastFrostDate && !firstFrostDate) {
         results.skipped++
         continue
       }
 
-      const remindersToSend: PlantReminder[] = []
-      const reminderLeadDays = settings.reminderLeadDays || 7
-      const reminderWindowStart = today
-      const reminderWindowEnd = addDays(today, reminderLeadDays)
+      const plants: ReminderPlantInput[] = [
+        ...user.seeds.map((seed): ReminderPlantInput => ({
+          key: `seed:${seed.id}`,
+          plantName: seed.plantType?.name || seed.customPlantName || seed.nickname || 'Unknown Plant',
+          variety: seed.variety,
+          category: seed.plantType?.category || seed.customCategory,
+          source: 'seed',
+          indoorStartWeeks: seed.plantType?.indoorStartWeeks ?? null,
+          outdoorStartWeeks: seed.plantType?.outdoorStartWeeks ?? null,
+          transplantWeeks: seed.plantType?.transplantWeeks ?? null,
+          daysToMaturity: seed.plantType?.daysToMaturity ?? seed.daysToMaturity ?? null,
+          overrideIndoorStart: seed.enableIndoorStartReminder,
+          overrideDirectSow: seed.enableDirectSowReminder,
+          overrideTransplant: seed.enableTransplantReminder,
+        })),
+        // Wishlist items aren't "in stock" yet, so they're opt-in separately.
+        ...(settings.enableWishlistReminders ? user.wishlistItems.map((item): ReminderPlantInput => ({
+          key: `wishlist:${item.id}`,
+          plantName: item.plantType?.name || item.customPlantName || 'Unknown Plant',
+          variety: item.variety,
+          category: item.plantType?.category ?? null,
+          source: 'wishlist',
+          indoorStartWeeks: item.plantType?.indoorStartWeeks ?? item.indoorStartWeeks ?? null,
+          outdoorStartWeeks: item.plantType?.outdoorStartWeeks ?? item.outdoorStartWeeks ?? null,
+          transplantWeeks: item.plantType?.transplantWeeks ?? null,
+          daysToMaturity: item.plantType?.daysToMaturity ?? null,
+        })) : []),
+      ]
 
-      // Process seeds in inventory
-      for (const seed of user.seeds) {
-        const plantName = seed.plantType?.name || seed.customPlantName || seed.nickname || 'Unknown Plant'
-        const guide = seed.plantType
+      const candidates = computePlantingReminders({
+        plants,
+        today,
+        reminderLeadDays: settings.reminderLeadDays || 7,
+        lastFrostDate,
+        firstFrostDate,
+        globalReminders: {
+          indoorStart: settings.enableIndoorStartReminders,
+          directSow: settings.enableDirectSowReminders,
+          transplant: settings.enableTransplantReminders,
+          fallDirectSow: settings.enableFallReminders,
+        },
+      })
 
-        if (settings.enableIndoorStartReminders && guide?.indoorStartWeeks) {
-          const indoorStartDate = addWeeks(lastFrostDate, -guide.indoorStartWeeks)
-          if (isWithinInterval(indoorStartDate, { start: reminderWindowStart, end: reminderWindowEnd })) {
-            remindersToSend.push({
-              plantName,
-              variety: seed.variety,
-              category: guide?.category || seed.customCategory,
-              plantingDate: indoorStartDate,
-              type: 'indoor_start',
-              source: 'seed',
-            })
-          }
-        }
-
-        if (settings.enableDirectSowReminders && guide?.outdoorStartWeeks !== undefined && guide?.outdoorStartWeeks !== null) {
-          const directSowDate = addWeeks(lastFrostDate, guide.outdoorStartWeeks)
-          if (isWithinInterval(directSowDate, { start: reminderWindowStart, end: reminderWindowEnd })) {
-            remindersToSend.push({
-              plantName,
-              variety: seed.variety,
-              category: guide?.category || seed.customCategory,
-              plantingDate: directSowDate,
-              type: 'direct_sow',
-              source: 'seed',
-            })
-          }
-        }
-
-        if (settings.enableTransplantReminders && guide?.transplantWeeks !== undefined && guide?.transplantWeeks !== null) {
-          const transplantDate = addWeeks(lastFrostDate, guide.transplantWeeks)
-          if (isWithinInterval(transplantDate, { start: reminderWindowStart, end: reminderWindowEnd })) {
-            remindersToSend.push({
-              plantName,
-              variety: seed.variety,
-              category: guide?.category || seed.customCategory,
-              plantingDate: transplantDate,
-              type: 'transplant',
-              source: 'seed',
-            })
-          }
-        }
-      }
-
-      // Process wishlist items (only if they have planting info)
-      for (const item of user.wishlistItems) {
-        const plantName = item.plantType?.name || item.customPlantName || 'Unknown Plant'
-        const guide = item.plantType
-
-        // Use plant encyclopedia data or custom dates from wishlist item
-        const indoorStartWeeks = guide?.indoorStartWeeks ?? item.indoorStartWeeks
-        const outdoorStartWeeks = guide?.outdoorStartWeeks ?? item.outdoorStartWeeks
-        const transplantWeeks = guide?.transplantWeeks
-
-        if (settings.enableIndoorStartReminders && indoorStartWeeks) {
-          const indoorStartDate = addWeeks(lastFrostDate, -indoorStartWeeks)
-          if (isWithinInterval(indoorStartDate, { start: reminderWindowStart, end: reminderWindowEnd })) {
-            remindersToSend.push({
-              plantName,
-              variety: item.variety,
-              category: guide?.category,
-              plantingDate: indoorStartDate,
-              type: 'indoor_start',
-              source: 'wishlist',
-            })
-          }
-        }
-
-        if (settings.enableDirectSowReminders && outdoorStartWeeks !== undefined && outdoorStartWeeks !== null) {
-          const directSowDate = addWeeks(lastFrostDate, outdoorStartWeeks)
-          if (isWithinInterval(directSowDate, { start: reminderWindowStart, end: reminderWindowEnd })) {
-            remindersToSend.push({
-              plantName,
-              variety: item.variety,
-              category: guide?.category,
-              plantingDate: directSowDate,
-              type: 'direct_sow',
-              source: 'wishlist',
-            })
-          }
-        }
-
-        if (settings.enableTransplantReminders && transplantWeeks !== undefined && transplantWeeks !== null) {
-          const transplantDate = addWeeks(lastFrostDate, transplantWeeks)
-          if (isWithinInterval(transplantDate, { start: reminderWindowStart, end: reminderWindowEnd })) {
-            remindersToSend.push({
-              plantName,
-              variety: item.variety,
-              category: guide?.category,
-              plantingDate: transplantDate,
-              type: 'transplant',
-              source: 'wishlist',
-            })
-          }
-        }
-      }
-
-      // Check if we've already sent these reminders this year
-      if (remindersToSend.length > 0) {
-        const result = await sendConsolidatedReminder(user.id, user.email, user.name, remindersToSend, currentYear)
-        if (result.sent) {
-          results.sent++
-        } else if (result.skipped) {
-          results.skipped++
-        } else {
-          results.failed++
-          if (result.error) results.errors.push(result.error)
-        }
-      }
-    }
-
-    // Process users with individual seed reminders only
-    for (const user of usersWithIndividualReminders) {
-      if (!user.email || !user.settings) {
+      if (candidates.length === 0) {
         results.skipped++
         continue
       }
 
-      const lastFrostDate = getLastFrostDate(user.settings, currentYear)
-      if (!lastFrostDate) {
+      const result = await sendConsolidatedReminder(user.id, user.email, user.name, candidates, currentYear)
+      if (result.sent) {
+        results.sent++
+      } else if (result.skipped) {
         results.skipped++
-        continue
-      }
-
-      const remindersToSend: PlantReminder[] = []
-      const reminderLeadDays = user.settings.reminderLeadDays || 7
-      const reminderWindowStart = today
-      const reminderWindowEnd = addDays(today, reminderLeadDays)
-
-      for (const seed of user.seeds) {
-        const plantName = seed.plantType?.name || seed.customPlantName || seed.nickname || 'Unknown Plant'
-        const guide = seed.plantType
-
-        if (seed.enableIndoorStartReminder && guide?.indoorStartWeeks) {
-          const indoorStartDate = addWeeks(lastFrostDate, -guide.indoorStartWeeks)
-          if (isWithinInterval(indoorStartDate, { start: reminderWindowStart, end: reminderWindowEnd })) {
-            remindersToSend.push({
-              plantName,
-              variety: seed.variety,
-              category: guide?.category || seed.customCategory,
-              plantingDate: indoorStartDate,
-              type: 'indoor_start',
-              source: 'seed',
-            })
-          }
-        }
-
-        if (seed.enableDirectSowReminder && guide?.outdoorStartWeeks !== undefined && guide?.outdoorStartWeeks !== null) {
-          const directSowDate = addWeeks(lastFrostDate, guide.outdoorStartWeeks)
-          if (isWithinInterval(directSowDate, { start: reminderWindowStart, end: reminderWindowEnd })) {
-            remindersToSend.push({
-              plantName,
-              variety: seed.variety,
-              category: guide?.category || seed.customCategory,
-              plantingDate: directSowDate,
-              type: 'direct_sow',
-              source: 'seed',
-            })
-          }
-        }
-
-        if (seed.enableTransplantReminder && guide?.transplantWeeks !== undefined && guide?.transplantWeeks !== null) {
-          const transplantDate = addWeeks(lastFrostDate, guide.transplantWeeks)
-          if (isWithinInterval(transplantDate, { start: reminderWindowStart, end: reminderWindowEnd })) {
-            remindersToSend.push({
-              plantName,
-              variety: seed.variety,
-              category: guide?.category || seed.customCategory,
-              plantingDate: transplantDate,
-              type: 'transplant',
-              source: 'seed',
-            })
-          }
-        }
-      }
-
-      if (remindersToSend.length > 0) {
-        const result = await sendConsolidatedReminder(user.id, user.email, user.name, remindersToSend, currentYear)
-        if (result.sent) {
-          results.sent++
-        } else if (result.skipped) {
-          results.skipped++
-        } else {
-          results.failed++
-          if (result.error) results.errors.push(result.error)
-        }
+      } else {
+        results.failed++
+        if (result.error) results.errors.push(result.error)
       }
     }
 
@@ -335,65 +180,43 @@ export async function POST(request: Request) {
   }
 }
 
-function getLastFrostDate(settings: { hardinessZone?: string | null; lastFrostDate?: Date | null }, currentYear: number): Date | null {
-  if (settings.lastFrostDate) {
-    // Use custom last frost date, but update to current year
-    const customDate = new Date(settings.lastFrostDate)
-    return new Date(currentYear, customDate.getMonth(), customDate.getDate())
-  }
-
-  if (settings.hardinessZone && hardinessZones[settings.hardinessZone]) {
-    const zoneInfo = hardinessZones[settings.hardinessZone]
-    return parseFrostDate(zoneInfo.lastFrostSpring, currentYear)
-  }
-
-  return null
-}
-
 async function sendConsolidatedReminder(
   userId: string,
   email: string,
   name: string | null,
-  reminders: PlantReminder[],
+  candidates: ReturnType<typeof computePlantingReminders>,
   year: number
 ): Promise<{ sent: boolean; skipped: boolean; error?: string }> {
-  // Group reminders by type
-  const indoorReminders = reminders.filter(r => r.type === 'indoor_start')
-  const directSowReminders = reminders.filter(r => r.type === 'direct_sow')
-  const transplantReminders = reminders.filter(r => r.type === 'transplant')
+  // Per-plant dedup key (see PlantingReminderLog.plantKey): a different
+  // plant sharing the same reminderType+targetDate as one already sent no
+  // longer gets silently skipped.
+  const dedupKey = (reminderType: string, targetDate: Date, plantKey: string) =>
+    `${reminderType}-${format(targetDate, 'yyyy-MM-dd')}-${plantKey}`
 
-  // Check if we've already sent similar reminders for these dates this year
   const existingLogs = await prisma.plantingReminderLog.findMany({
-    where: {
-      userId,
-      year,
-      OR: [
-        ...(indoorReminders.length > 0 ? [{ reminderType: 'indoor_start' }] : []),
-        ...(directSowReminders.length > 0 ? [{ reminderType: 'direct_sow' }] : []),
-        ...(transplantReminders.length > 0 ? [{ reminderType: 'transplant' }] : []),
-      ],
-    },
+    where: { userId, year, reminderType: { in: Array.from(new Set(candidates.map(c => c.type))) } },
+    select: { reminderType: true, targetDate: true, plantKey: true },
   })
+  const sentKeys = new Set(existingLogs.map(log => dedupKey(log.reminderType, log.targetDate, log.plantKey)))
 
-  // Create unique keys for comparison
-  const sentKeys = new Set(existingLogs.map((log: { reminderType: string; targetDate: Date }) => 
-    `${log.reminderType}-${format(log.targetDate, 'yyyy-MM-dd')}`
-  ))
-
-  // Filter out already sent reminders
-  const newIndoorReminders = indoorReminders.filter(r => 
-    !sentKeys.has(`indoor_start-${format(r.plantingDate, 'yyyy-MM-dd')}`)
-  )
-  const newDirectSowReminders = directSowReminders.filter(r => 
-    !sentKeys.has(`direct_sow-${format(r.plantingDate, 'yyyy-MM-dd')}`)
-  )
-  const newTransplantReminders = transplantReminders.filter(r => 
-    !sentKeys.has(`transplant-${format(r.plantingDate, 'yyyy-MM-dd')}`)
-  )
-
-  if (newIndoorReminders.length === 0 && newDirectSowReminders.length === 0 && newTransplantReminders.length === 0) {
+  const newReminders = candidates.filter(c => !sentKeys.has(dedupKey(c.type, c.plantingDate, c.plantKey)))
+  if (newReminders.length === 0) {
     return { sent: false, skipped: true }
   }
+
+  const toPlantReminder = (c: (typeof newReminders)[number]): PlantReminder => ({
+    plantName: c.plantName,
+    variety: c.variety,
+    category: c.category,
+    plantingDate: c.plantingDate,
+    type: c.type,
+    source: c.source,
+  })
+
+  const indoorReminders = newReminders.filter(r => r.type === 'indoor_start').map(toPlantReminder)
+  const directSowReminders = newReminders.filter(r => r.type === 'direct_sow').map(toPlantReminder)
+  const transplantReminders = newReminders.filter(r => r.type === 'transplant').map(toPlantReminder)
+  const fallDirectSowReminders = newReminders.filter(r => r.type === 'fall_direct_sow').map(toPlantReminder)
 
   try {
     const emailClient = getResendClient()
@@ -402,59 +225,30 @@ async function sendConsolidatedReminder(
       return { sent: false, skipped: true, error: 'Email service not configured' }
     }
 
-    const totalReminders = newIndoorReminders.length + newDirectSowReminders.length + newTransplantReminders.length
-
-    // Send the email
     await emailClient.emails.send({
       from: process.env.EMAIL_FROM || 'Garden Seed Tracker <noreply@example.com>',
       to: email,
-      subject: `🌱 Time to Start Planting! ${totalReminders} plant${totalReminders > 1 ? 's' : ''} ready`,
+      subject: `🌱 Time to Start Planting! ${newReminders.length} plant${newReminders.length > 1 ? 's' : ''} ready`,
       html: generatePlantingReminderEmailHtml({
         name: name || 'Gardener',
-        indoorReminders: newIndoorReminders,
-        directSowReminders: newDirectSowReminders,
-        transplantReminders: newTransplantReminders,
+        indoorReminders,
+        directSowReminders,
+        transplantReminders,
+        fallDirectSowReminders,
         settingsUrl: `${process.env.NEXTAUTH_URL}/settings`,
         calendarUrl: `${process.env.NEXTAUTH_URL}/calendar`,
       }),
     })
 
-    // Log that we sent these reminders
-    const logsToCreate = [
-      ...newIndoorReminders.map(r => ({
-        userId,
-        plantNames: JSON.stringify(newIndoorReminders.map(r => r.plantName)),
-        reminderType: 'indoor_start',
-        targetDate: r.plantingDate,
-        year,
-      })),
-      ...newDirectSowReminders.map(r => ({
-        userId,
-        plantNames: JSON.stringify(newDirectSowReminders.map(r => r.plantName)),
-        reminderType: 'direct_sow',
-        targetDate: r.plantingDate,
-        year,
-      })),
-      ...newTransplantReminders.map(r => ({
-        userId,
-        plantNames: JSON.stringify(newTransplantReminders.map(r => r.plantName)),
-        reminderType: 'transplant',
-        targetDate: r.plantingDate,
-        year,
-      })),
-    ]
-
-    // Group by unique target date to avoid duplicates
-    const uniqueLogs = logsToCreate.reduce((acc, log) => {
-      const key = `${log.reminderType}-${format(log.targetDate, 'yyyy-MM-dd')}`
-      if (!acc[key]) {
-        acc[key] = log
-      }
-      return acc
-    }, {} as Record<string, typeof logsToCreate[0]>)
-
     await prisma.plantingReminderLog.createMany({
-      data: Object.values(uniqueLogs),
+      data: newReminders.map(r => ({
+        userId,
+        plantNames: JSON.stringify([r.plantName]),
+        reminderType: r.type,
+        targetDate: r.plantingDate,
+        plantKey: r.plantKey,
+        year,
+      })),
     })
 
     console.log(`Planting reminder sent to ${email}`)

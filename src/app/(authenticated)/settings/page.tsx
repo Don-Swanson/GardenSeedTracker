@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Save, MapPin, Thermometer, Calendar, RefreshCw, X, Clock, User, AtSign, Mail, Check, Loader2, Bell, MapPinned, Heart } from 'lucide-react'
 import { hardinessZones } from '@/lib/garden-utils'
+import { USERNAME_REGEX } from '@/lib/username'
 
 // Default location: Niceville, FL
 const DEFAULT_LOCATION = {
@@ -21,11 +22,15 @@ interface UserSettings {
   firstFrostDate: string | null
   latitude: number | null
   longitude: number | null
+  timezone: string | null
   // Planting reminder settings
   enableIndoorStartReminders: boolean
   enableDirectSowReminders: boolean
   enableTransplantReminders: boolean
+  enableFallReminders: boolean
+  enableWishlistReminders: boolean
   reminderLeadDays: number
+  swapMessageEmails: boolean
 }
 
 interface UserProfile {
@@ -105,8 +110,7 @@ function SettingsContent() {
       return
     }
 
-    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
-    if (!usernameRegex.test(editingUsername)) {
+    if (!USERNAME_REGEX.test(editingUsername)) {
       setUsernameError('3-20 characters, letters, numbers, underscores only')
       setUsernameValid(false)
       return
@@ -225,10 +229,11 @@ function SettingsContent() {
     }
   }
 
-  // Geocode zip code to get lat/long
+  // Look up lat/long, place name and USDA zone for a ZIP code (server-side,
+  // so it works for both providers without exposing them to CORS issues).
   const handleGeocodeZip = async () => {
     const zipInput = document.getElementById('zipCode') as HTMLInputElement
-    const zip = zipInput?.value?.trim()
+    const zip = zipInput?.value?.trim().substring(0, 5)
     
     if (!zip) {
       setGeocodeError('Please enter a ZIP code')
@@ -236,7 +241,7 @@ function SettingsContent() {
     }
     
     // Validate US zip code format
-    if (!/^\d{5}(-\d{4})?$/.test(zip)) {
+    if (!/^\d{5}$/.test(zip)) {
       setGeocodeError('Please enter a valid US ZIP code (e.g., 32578)')
       return
     }
@@ -245,32 +250,39 @@ function SettingsContent() {
     setGeocodeError('')
     
     try {
-      // Use a free geocoding API (Zippopotam.us for zip codes)
-      const res = await fetch(`https://api.zippopotam.us/us/${zip.substring(0, 5)}`)
-      
-      if (!res.ok) {
-        throw new Error('ZIP code not found')
-      }
-      
+      const res = await fetch(`/api/location/lookup?zip=${zip}`)
       const data = await res.json()
-      
-      if (data.places && data.places.length > 0) {
-        const place = data.places[0]
-        const lat = parseFloat(place.latitude)
-        const lng = parseFloat(place.longitude)
-        
-        // Update form inputs
-        const latInput = document.getElementById('latitude') as HTMLInputElement
-        const lngInput = document.getElementById('longitude') as HTMLInputElement
-        
-        if (latInput) latInput.value = lat.toFixed(4)
-        if (lngInput) lngInput.value = lng.toFixed(4)
-        
-        setGeocodeError('')
-        setMessage(`Location set to ${place['place name']}, ${place['state abbreviation']}`)
+
+      if (!res.ok) {
+        throw new Error(data.error || 'ZIP code not found')
       }
-    } catch {
-      setGeocodeError('Could not find location for this ZIP code')
+
+      // Update form inputs
+      const latInput = document.getElementById('latitude') as HTMLInputElement
+      const lngInput = document.getElementById('longitude') as HTMLInputElement
+
+      if (data.latitude !== null && latInput) latInput.value = data.latitude.toFixed(4)
+      if (data.longitude !== null && lngInput) lngInput.value = data.longitude.toFixed(4)
+
+      let messageText = data.place ? `Location set to ${data.place}` : 'Location coordinates set'
+
+      // Also auto-select the hardiness zone (and its frost dates), same as
+      // if the user had picked it from the dropdown themselves.
+      if (data.zone) {
+        const zoneSelect = document.getElementById('hardinessZone') as HTMLSelectElement
+        if (zoneSelect && zoneSelect.querySelector(`option[value="${data.zone}"]`)) {
+          zoneSelect.value = data.zone
+          handleZoneChange(data.zone)
+          messageText += ` · Zone ${data.zone} detected`
+        }
+      } else {
+        messageText += ' (could not auto-detect your hardiness zone - please select it manually)'
+      }
+
+      setGeocodeError('')
+      setMessage(messageText)
+    } catch (error) {
+      setGeocodeError(error instanceof Error ? error.message : 'Could not find location for this ZIP code')
     } finally {
       setGeocodingZip(false)
     }
@@ -302,10 +314,16 @@ function SettingsContent() {
       firstFrostDate: formData.get('firstFrostDate') || null,
       latitude: parseFloat(formData.get('latitude') as string) || null,
       longitude: parseFloat(formData.get('longitude') as string) || null,
+      // Captured silently so moon/astronomy times and reminder dates use the
+      // right local day - there's no separate UI field for this.
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
       // Planting reminder settings
       enableIndoorStartReminders: formData.get('enableIndoorStartReminders') === 'on',
       enableDirectSowReminders: formData.get('enableDirectSowReminders') === 'on',
       enableTransplantReminders: formData.get('enableTransplantReminders') === 'on',
+      enableFallReminders: formData.get('enableFallReminders') === 'on',
+      enableWishlistReminders: formData.get('enableWishlistReminders') === 'on',
+      swapMessageEmails: formData.get('swapMessageEmails') === 'on',
       reminderLeadDays: parseInt(formData.get('reminderLeadDays') as string) || 7,
     }
 
@@ -604,7 +622,7 @@ function SettingsContent() {
               <p className="text-sm text-red-500 mt-1">{geocodeError}</p>
             )}
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Enter your ZIP code and click &quot;Auto-fill Coordinates&quot; to automatically set your latitude and longitude for accurate astronomy data.
+              Enter your ZIP code and click &quot;Auto-fill Coordinates&quot; to set your latitude/longitude, hardiness zone and frost dates automatically. You can still adjust any of them below.
             </p>
           </div>
 
@@ -728,7 +746,7 @@ function SettingsContent() {
           </p>
           
           <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4 text-sm text-blue-700 dark:text-blue-300">
-            <strong>💡 Tip:</strong> If you prefer to control reminders for specific seeds, you can disable these global settings and enable reminders individually on each seed in your inventory.
+            <strong>💡 Tip:</strong> These are on by default for new accounts. You can also turn on a reminder for just one seed from that seed&apos;s edit page - it&apos;ll remind you for that seed even if the matching setting here is off.
           </div>
           
           <div className="space-y-3">
@@ -779,6 +797,38 @@ function SettingsContent() {
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-garden-300 dark:peer-focus:ring-garden-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-garden-600"></div>
               </label>
             </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-medium text-gray-900 dark:text-white">Fall Planting Reminders</label>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Remind me when to direct sow fall crops, counting back from your first frost date</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  name="enableFallReminders"
+                  defaultChecked={settings?.enableFallReminders ?? false}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-garden-300 dark:peer-focus:ring-garden-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-garden-600"></div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-medium text-gray-900 dark:text-white">Include Wishlist Items</label>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Also remind me about planting dates for wishlist items (not just seeds already in your inventory)</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  name="enableWishlistReminders"
+                  defaultChecked={settings?.enableWishlistReminders ?? false}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-garden-300 dark:peer-focus:ring-garden-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-garden-600"></div>
+              </label>
+            </div>
             
             <div>
               <label htmlFor="reminderLeadDays" className="label">Reminder Lead Time</label>
@@ -796,6 +846,29 @@ function SettingsContent() {
               </select>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">How many days before the planting date should we send the reminder</p>
             </div>
+          </div>
+        </div>
+
+        {/* Swap Board */}
+        <div className="space-y-4">
+          <h2 className="font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
+            <Bell className="w-5 h-5" />
+            Swap Board
+          </h2>
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="font-medium text-gray-900 dark:text-white">New Message Emails</label>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Email me when someone messages me on the swap board (never includes the message itself)</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="swapMessageEmails"
+                defaultChecked={settings?.swapMessageEmails ?? true}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-garden-300 dark:peer-focus:ring-garden-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-garden-600"></div>
+            </label>
           </div>
         </div>
 

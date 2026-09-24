@@ -7,6 +7,7 @@ import { signIn } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Leaf, Mail, User, AtSign, AlertCircle, Sparkles, Loader2, Check } from 'lucide-react'
+import { USERNAME_REGEX } from '@/lib/username'
 
 function SignUpPageContent() {
   const router = useRouter()
@@ -32,8 +33,7 @@ function SignUpPageContent() {
       return
     }
 
-    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
-    if (!usernameRegex.test(username)) {
+    if (!USERNAME_REGEX.test(username)) {
       setUsernameError('3-20 characters, letters, numbers, underscores only')
       setUsernameValid(false)
       return

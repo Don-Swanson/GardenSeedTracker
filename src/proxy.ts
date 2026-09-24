@@ -12,6 +12,7 @@ const protectedRoutes = [
   '/almanac',
   '/settings',
   '/plants',
+  '/swap',
 ]
 
 // API routes that require authentication
@@ -21,6 +22,7 @@ const protectedApiRoutes = [
   '/api/wishlist',
   '/api/settings',
   '/api/plants',
+  '/api/swap',
 ]
 
 // API routes that require admin role
@@ -42,6 +44,18 @@ const authenticatedProxy = withAuth(
           { status: 403 }
         )
       }
+    }
+
+    // Guide brand-new accounts that skipped the signup form (Google OAuth,
+    // or a magic link for an email that never visited /auth/signup) through
+    // a one-time profile setup step (name/username). Page routes only -
+    // never redirect an API call, and never loop on /auth/* itself.
+    const isProtectedPage = !pathname.startsWith('/api/') &&
+      protectedRoutes.some((route) => pathname.startsWith(route))
+    if (isProtectedPage && token && !token.onboardedAt) {
+      const redirectUrl = new URL('/auth/setup-profile', req.url)
+      redirectUrl.searchParams.set('callbackUrl', pathname + req.nextUrl.search)
+      return NextResponse.redirect(redirectUrl)
     }
 
     return NextResponse.next()
@@ -94,6 +108,7 @@ export const config = {
     '/almanac/:path*',
     '/settings/:path*',
     '/plants/:path*',
+    '/swap/:path*',
     // Protected API routes
     '/api/:path*',
   ],

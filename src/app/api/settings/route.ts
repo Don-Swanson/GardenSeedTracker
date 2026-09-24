@@ -61,6 +61,7 @@ export async function POST(request: Request) {
         firstFrostDate: data.firstFrostDate ? new Date(data.firstFrostDate) : null,
         latitude: data.latitude,
         longitude: data.longitude,
+        timezone: data.timezone || null,
         // Planting reminder settings
         enableIndoorStartReminders: data.enableIndoorStartReminders ?? false,
         enableDirectSowReminders: data.enableDirectSowReminders ?? false,
@@ -102,6 +103,7 @@ export async function PUT(request: Request) {
           firstFrostDate: data.firstFrostDate ? new Date(data.firstFrostDate) : null,
           latitude: data.latitude,
           longitude: data.longitude,
+          timezone: data.timezone || null,
           // Planting reminder settings
           enableIndoorStartReminders: data.enableIndoorStartReminders ?? false,
           enableDirectSowReminders: data.enableDirectSowReminders ?? false,
@@ -122,6 +124,7 @@ export async function PUT(request: Request) {
         firstFrostDate: data.firstFrostDate ? new Date(data.firstFrostDate) : null,
         latitude: data.latitude,
         longitude: data.longitude,
+        timezone: data.timezone ?? existing.timezone,
         // Planting reminder settings
         enableIndoorStartReminders: data.enableIndoorStartReminders ?? existing.enableIndoorStartReminders,
         enableDirectSowReminders: data.enableDirectSowReminders ?? existing.enableDirectSowReminders,

@@ -1,73 +1,8 @@
 import { format, addWeeks, startOfYear, endOfYear, eachMonthOfInterval, getMonth } from 'date-fns'
 
-// Moon phase calculation using accurate reference point
-// Reference: New Moon on January 6, 2000, 18:14 UTC
-const KNOWN_NEW_MOON = new Date(Date.UTC(2000, 0, 6, 18, 14, 0))
-const SYNODIC_MONTH = 29.53058867
-
-export function getMoonPhase(date: Date): {
-  phase: string
-  illumination: number
-  emoji: string
-  plantingAdvice: string
-} {
-  const daysSinceNewMoon = (date.getTime() - KNOWN_NEW_MOON.getTime()) / (1000 * 60 * 60 * 24)
-  const lunarCycles = daysSinceNewMoon / SYNODIC_MONTH
-  const cyclePosition = lunarCycles - Math.floor(lunarCycles)
-  
-  // Calculate illumination using cosine for smooth/accurate transition
-  const illumination = Math.round((1 - Math.cos(cyclePosition * 2 * Math.PI)) / 2 * 100)
-  
-  // Determine phase based on cycle position
-  let phase: string
-  let emoji: string
-  let plantingAdvice: string
-  
-  if (cyclePosition < 0.0625) {
-    phase = 'New Moon'
-    emoji = '🌑'
-    plantingAdvice = 'Best for planting leafy crops that produce seeds outside the fruit'
-  } else if (cyclePosition < 0.1875) {
-    phase = 'Waxing Crescent'
-    emoji = '🌒'
-    plantingAdvice = 'Good for leafy annuals with external seeds'
-  } else if (cyclePosition < 0.3125) {
-    phase = 'First Quarter'
-    emoji = '🌓'
-    plantingAdvice = 'Best for fruiting annuals with internal seeds (tomatoes, peppers)'
-  } else if (cyclePosition < 0.4375) {
-    phase = 'Waxing Gibbous'
-    emoji = '🌔'
-    plantingAdvice = 'Good for transplanting and grafting'
-  } else if (cyclePosition < 0.5625) {
-    phase = 'Full Moon'
-    emoji = '🌕'
-    plantingAdvice = 'Best for planting root crops and perennials'
-  } else if (cyclePosition < 0.6875) {
-    phase = 'Waning Gibbous'
-    emoji = '🌖'
-    plantingAdvice = 'Good for root vegetables and bulbs'
-  } else if (cyclePosition < 0.8125) {
-    phase = 'Last Quarter'
-    emoji = '🌗'
-    plantingAdvice = 'Best for weeding, harvesting, and pest control'
-  } else if (cyclePosition < 0.9375) {
-    phase = 'Waning Crescent'
-    emoji = '🌘'
-    plantingAdvice = 'Rest period - avoid planting. Good for soil work'
-  } else {
-    phase = 'New Moon'
-    emoji = '🌑'
-    plantingAdvice = 'Best for planting leafy crops that produce seeds outside the fruit'
-  }
-  
-  return {
-    phase,
-    illumination,
-    emoji,
-    plantingAdvice,
-  }
-}
+// Moon phase math lives in @/lib/moon (getMoonPhaseCalculated) - this file
+// used to have its own separate copy, which had quietly drifted out of sync
+// with the Almanac page's version.
 
 // USDA Hardiness Zones with frost dates
 export const hardinessZones: Record<string, {
@@ -121,6 +56,39 @@ export function calculatePlantingDates(
     outdoorStart: outdoorStartWeeks !== null ? addWeeks(lastFrostDate, outdoorStartWeeks) : null,
     transplant: transplantWeeks !== null ? addWeeks(lastFrostDate, transplantWeeks) : null,
   }
+}
+
+// Resolve a user's effective frost dates: their own custom date if they set
+// one, otherwise the zone-average date for their hardiness zone. Shared by
+// the dashboard, the planting-reminders cron job, and anywhere else that
+// needs "what does this user's last/first frost date actually mean" - it
+// used to be a private helper duplicated inside the cron route only.
+export function getEffectiveLastFrostDate(
+  settings: { hardinessZone?: string | null; lastFrostDate?: Date | string | null } | null | undefined,
+  year: number
+): Date | null {
+  if (settings?.lastFrostDate) {
+    const customDate = new Date(settings.lastFrostDate)
+    return new Date(year, customDate.getMonth(), customDate.getDate())
+  }
+  if (settings?.hardinessZone && hardinessZones[settings.hardinessZone]) {
+    return parseFrostDate(hardinessZones[settings.hardinessZone].lastFrostSpring, year)
+  }
+  return null
+}
+
+export function getEffectiveFirstFrostDate(
+  settings: { hardinessZone?: string | null; firstFrostDate?: Date | string | null } | null | undefined,
+  year: number
+): Date | null {
+  if (settings?.firstFrostDate) {
+    const customDate = new Date(settings.firstFrostDate)
+    return new Date(year, customDate.getMonth(), customDate.getDate())
+  }
+  if (settings?.hardinessZone && hardinessZones[settings.hardinessZone]) {
+    return parseFrostDate(hardinessZones[settings.hardinessZone].firstFrostFall, year)
+  }
+  return null
 }
 
 // Parse frost date string to Date

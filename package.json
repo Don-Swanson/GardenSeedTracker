@@ -15,6 +15,9 @@
     "test:catalog": "node --import tsx --test tests/catalog/*.test.ts",
     "test:email": "node --test tests/email/*.test.mjs",
     "test:security": "node --import tsx --test tests/security/*.test.ts",
+    "test:users": "node --import tsx --test tests/users/*.test.ts",
+    "test:reminders": "node --import tsx --test tests/reminders/*.test.ts",
+    "test:swap": "node --import tsx --test tests/swap/*.test.ts",
     "db:deploy": "tsx scripts/database/initialize.ts",
     "catalog:import-api": "tsx scripts/catalog/import-api.ts"
   },

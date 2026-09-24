@@ -26,7 +26,9 @@ model User {
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
+  lastActiveAt  DateTime? // Updated on session activity (throttled); used for "last active" display
+  onboardedAt   DateTime? // Set once the guided profile setup (name/username/location) is done or skipped
+
   // Relations
   accounts      Account[]
   sessions      Session[]
@@ -37,6 +39,10 @@ model User {
   settings      UserSettings?
   plantRequests PlantRequest[]
   plantSubmissions PlantingGuide[] @relation("PlantSubmissions")
+  swapListings  SwapListing[]
+  swapThreadsInitiated SwapThread[] @relation("SwapThreadInitiator")
+  swapThreadsOwned     SwapThread[] @relation("SwapThreadOwner")
+  swapMessages         SwapMessage[]
 }
 
 model Account {
@@ -79,7 +85,7 @@ model SignupData {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
-  username  String?
+  username  String?  @unique // Reserves the username for the pending signup so two people can't race for it
   expiresAt DateTime
   createdAt DateTime @default(now())
   
@@ -133,6 +139,7 @@ model Seed {
   updatedAt       DateTime @updatedAt
   
   plantings       Planting[]
+  swapListings    SwapListing[]
   
   @@index([userId])
 }
@@ -247,16 +254,22 @@ model UserSettings {
   firstFrostDate  DateTime?
   latitude        Float?
   longitude       Float?
+  timezone        String? // IANA timezone (e.g. "America/Chicago"), captured from the browser when settings are saved
   
   // Notification preferences
   emailNotifications Boolean @default(true)
   plantingReminders  Boolean @default(true)
   
-  // Planting reminder settings (global)
-  enableIndoorStartReminders Boolean @default(false) // Remind for indoor start dates
-  enableDirectSowReminders   Boolean @default(false) // Remind for direct sow dates
-  enableTransplantReminders  Boolean @default(false) // Remind for transplant dates
+  // Planting reminder settings (global) - on by default; see migration
+  // 20260923030000 for how this default was rolled out to existing accounts
+  // without overriding anyone who had deliberately turned reminders off.
+  enableIndoorStartReminders Boolean @default(true)  // Remind for indoor start dates
+  enableDirectSowReminders   Boolean @default(true)  // Remind for direct sow dates
+  enableTransplantReminders  Boolean @default(true)  // Remind for transplant dates
+  enableFallReminders        Boolean @default(true)  // Remind for fall planting dates (based on firstFrostDate)
+  enableWishlistReminders    Boolean @default(false) // Wishlist items aren't in stock yet, so this is opt-in
   reminderLeadDays           Int     @default(7)     // Days before planting date to send reminder
+  swapMessageEmails          Boolean @default(true)  // Email when someone messages you on the swap board (never includes the message text)
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -359,6 +372,7 @@ model PlantingGuide {
   seeds                 Seed[]
   wishlistItems         WishlistItem[]
   suggestions           PlantSuggestion[]
+  swapListings          SwapListing[]
 
   @@unique([sourceName, sourceId])
   @@index([scientificName])
@@ -490,8 +504,13 @@ model PlantingReminderLog {
   
   // What plants were included in this reminder
   plantNames      String   // JSON array of plant names included
-  reminderType    String   // "indoor_start" or "direct_sow"
+  reminderType    String   // "indoor_start", "direct_sow", "transplant" or "fall_direct_sow"
   targetDate      DateTime // The planting date we're reminding about
+  // Identifies the specific seed/wishlist item this reminder covers (e.g.
+  // "seed:<id>" or "wishlist:<id>"), so a different plant sharing the same
+  // reminderType+targetDate doesn't get silently skipped as "already sent".
+  // Empty for rows written before this column existed.
+  plantKey        String   @default("")
   
   // Tracking
   sentAt          DateTime @default(now())
@@ -499,6 +518,96 @@ model PlantingReminderLog {
   
   @@index([userId])
   @@index([userId, reminderType, year])
+}
+
+// ==================== SEED SWAP BOARD ====================
+
+model SwapListing {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type            String   // "offer" - I have this to give/trade | "want" - I'm looking for this
+
+  // Optional link to the poster's own inventory (offers only) or the plant
+  // encyclopedia. Either can be null - a listing can just be free text.
+  seedId          String?
+  seed            Seed?    @relation(fields: [seedId], references: [id], onDelete: SetNull)
+  plantTypeId     String?
+  plantType       PlantingGuide? @relation(fields: [plantTypeId], references: [id])
+  customPlantName String?
+
+  variety         String?
+  quantity        String?  // free text, e.g. "a dozen seeds" or "1 packet" - swaps aren't precise inventory
+  description     String?
+
+  status          String   @default("active") // "active", "completed", "closed", "hidden" (moderation)
+  shippingOk      Boolean  @default(false)
+  localPickupOk   Boolean  @default(true)
+
+  // Snapshot of the poster's location at post time, rounded to ~1km - never
+  // the precise address - so nearby listings can be found/sorted by
+  // distance without exposing where anyone actually lives.
+  latitude        Float?
+  longitude       Float?
+
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  swapThreads     SwapThread[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([latitude, longitude])
+}
+
+// One thread per (listing, initiator) pair - re-messaging about the same
+// listing reopens the same conversation instead of forking a new one.
+// In-app only: no email addresses are ever exposed here, by design (see
+// the plan) - anything participants want to share, they type themselves.
+model SwapThread {
+  id                  String    @id @default(cuid())
+
+  listingId           String
+  listing             SwapListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  // "initiator" reached out about the listing; "owner" is who posted it.
+  initiatorId         String
+  initiator           User      @relation("SwapThreadInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  ownerId             String
+  owner               User      @relation("SwapThreadOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Per-participant read markers, not per-message - an inbox only needs
+  // "does this thread have anything new since I last opened it".
+  initiatorLastReadAt DateTime?
+  ownerLastReadAt     DateTime?
+
+  // Throttles the "you have a new message" email to at most one per hour
+  // per thread, regardless of how many messages arrive in that window.
+  lastNotifiedAt      DateTime?
+
+  lastMessageAt       DateTime  @default(now())
+  createdAt           DateTime  @default(now())
+
+  messages            SwapMessage[]
+
+  @@unique([listingId, initiatorId])
+  @@index([initiatorId])
+  @@index([ownerId])
+}
+
+model SwapMessage {
+  id        String     @id @default(cuid())
+  threadId  String
+  thread    SwapThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User       @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime   @default(now())
+
+  @@index([threadId])
 }
 
 // ==================== CSRF TOKENS ====================

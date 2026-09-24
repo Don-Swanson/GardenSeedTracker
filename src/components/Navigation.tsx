@@ -20,7 +20,8 @@ import {
   Leaf,
   HelpCircle,
   Heart,
-  Shield
+  Shield,
+  Repeat
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import ThemeToggle from './ThemeToggle'
@@ -35,6 +36,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Sprout, requiresAuth: true },
   { href: '/seeds', label: 'Seed Inventory', icon: Package, requiresAuth: true },
   { href: '/wishlist', label: 'Wishlist', icon: Star, requiresAuth: true },
+  { href: '/swap', label: 'Swap Board', icon: Repeat, requiresAuth: true },
   { href: '/plants', label: 'Plant Encyclopedia', icon: Leaf, requiresAuth: true },
   { href: '/plantings', label: 'Planting Log', icon: MapPin, requiresAuth: true },
   { href: '/calendar', label: 'Planting Calendar', icon: CalendarDays, requiresAuth: true },
@@ -48,6 +50,7 @@ export default function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [impersonatedUser, setImpersonatedUser] = useState<ImpersonatedUser | null>(null)
+  const [swapUnreadCount, setSwapUnreadCount] = useState(0)
 
   // Check for impersonation on mount
   useEffect(() => {
@@ -70,8 +73,22 @@ export default function Navigation() {
     checkStatus()
   }, [pathname]) // Re-check when pathname changes
 
-  const isLoading = status === 'loading'
   const isAuthenticated = !!session?.user
+
+  // Swap board inbox badge - re-checked on navigation so it clears shortly
+  // after visiting the inbox (the thread's read marker updates server-side).
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setSwapUnreadCount(0)
+      return
+    }
+    fetch('/api/swap/threads/unread-count')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => setSwapUnreadCount(data?.count || 0))
+      .catch(() => {})
+  }, [isAuthenticated, pathname])
+
+  const isLoading = status === 'loading'
   const isAdmin = session?.user?.role === 'admin'
   
   // Use impersonated user data if available
@@ -114,6 +131,11 @@ export default function Navigation() {
                 >
                   <Icon className="w-4 h-4" />
                   <span>{item.label}</span>
+                  {item.href === '/swap' && swapUnreadCount > 0 && (
+                    <span className="ml-1 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-red-500 text-white text-xs font-bold">
+                      {swapUnreadCount > 9 ? '9+' : swapUnreadCount}
+                    </span>
+                  )}
                 </Link>
               )
             })}
@@ -254,6 +276,11 @@ export default function Navigation() {
                     <Icon className="w-5 h-5" />
                     <span>{item.label}</span>
                   </div>
+                  {item.href === '/swap' && swapUnreadCount > 0 && (
+                    <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-red-500 text-white text-xs font-bold">
+                      {swapUnreadCount > 9 ? '9+' : swapUnreadCount}
+                    </span>
+                  )}
                 </Link>
               )
             })}

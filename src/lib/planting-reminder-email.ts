@@ -6,7 +6,7 @@ export interface PlantReminder {
   variety?: string | null
   category?: string | null
   plantingDate: Date
-  type: 'indoor_start' | 'direct_sow' | 'transplant'
+  type: 'indoor_start' | 'direct_sow' | 'transplant' | 'fall_direct_sow'
   source: 'seed' | 'wishlist'
 }
 
@@ -15,10 +15,11 @@ export function generatePlantingReminderEmailHtml(params: {
   indoorReminders: PlantReminder[]
   directSowReminders: PlantReminder[]
   transplantReminders: PlantReminder[]
+  fallDirectSowReminders?: PlantReminder[]
   settingsUrl: string
   calendarUrl: string
 }): string {
-  const { name, indoorReminders, directSowReminders, transplantReminders, settingsUrl, calendarUrl } = params
+  const { name, indoorReminders, directSowReminders, transplantReminders, fallDirectSowReminders = [], settingsUrl, calendarUrl } = params
 
   const formatReminder = (r: PlantReminder) => {
     const varietyStr = r.variety ? ` (${escapeHtml(r.variety)})` : ''
@@ -71,6 +72,16 @@ export function generatePlantingReminderEmailHtml(params: {
       <p style="color: #666; margin-bottom: 10px;">These seedlings are ready to be transplanted outdoors:</p>
       <ul style="padding-left: 20px; color: #333;">
         ${transplantReminders.map(formatReminder).join('')}
+      </ul>
+    </div>
+    ` : ''}
+
+    ${fallDirectSowReminders.length > 0 ? `
+    <div style="background: #efebe9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #795548;">
+      <h3 style="color: #5d4037; margin-top: 0;">🍂 Fall Direct Sow</h3>
+      <p style="color: #666; margin-bottom: 10px;">Plant these now for a harvest before your first fall frost:</p>
+      <ul style="padding-left: 20px; color: #333;">
+        ${fallDirectSowReminders.map(formatReminder).join('')}
       </ul>
     </div>
     ` : ''}

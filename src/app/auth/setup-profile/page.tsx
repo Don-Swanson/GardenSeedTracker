@@ -6,7 +6,8 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Leaf, User, AtSign, Check, X, Loader2, AlertCircle } from 'lucide-react'
+import { Leaf, User, AtSign, MapPin, Check, X, Loader2, AlertCircle } from 'lucide-react'
+import { USERNAME_REGEX } from '@/lib/username'
 
 function SetupProfileContent() {
   const router = useRouter()
@@ -21,6 +22,13 @@ function SetupProfileContent() {
   const [checkingUsername, setCheckingUsername] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  // Optional location step - lets us pre-fill hardiness zone, frost dates
+  // and moon/astronomy data instead of defaulting everyone to zone 7a.
+  const [zipCode, setZipCode] = useState('')
+  const [zipLookup, setZipLookup] = useState<{ place: string; latitude: number; longitude: number; zone: string | null } | null>(null)
+  const [zipLookupError, setZipLookupError] = useState('')
+  const [lookingUpZip, setLookingUpZip] = useState(false)
 
   // Pre-fill name from session if available
   useEffect(() => {
@@ -38,8 +46,7 @@ function SetupProfileContent() {
     }
 
     // Validate format
-    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
-    if (!usernameRegex.test(username)) {
+    if (!USERNAME_REGEX.test(username)) {
       setUsernameError('Username must be 3-20 characters, letters, numbers, and underscores only')
       setUsernameValid(false)
       return
@@ -69,6 +76,55 @@ function SetupProfileContent() {
 
     return () => clearTimeout(checkUsername)
   }, [username])
+
+  const handleZipBlur = async () => {
+    const zip = zipCode.trim()
+    setZipLookup(null)
+    setZipLookupError('')
+    if (!zip) return
+    if (!/^\d{5}$/.test(zip)) {
+      setZipLookupError('Enter a 5-digit US ZIP code')
+      return
+    }
+
+    setLookingUpZip(true)
+    try {
+      const res = await fetch(`/api/location/lookup?zip=${zip}`)
+      const data = await res.json()
+      if (!res.ok) {
+        setZipLookupError(data.error || 'Could not find that ZIP code')
+        return
+      }
+      setZipLookup({ place: data.place, latitude: data.latitude, longitude: data.longitude, zone: data.zone })
+    } catch {
+      setZipLookupError('Could not look up that ZIP code')
+    } finally {
+      setLookingUpZip(false)
+    }
+  }
+
+  // Best-effort: applies whatever location we successfully looked up. Never
+  // blocks the profile save if this fails - it's just a nice-to-have.
+  const saveLocationIfProvided = async () => {
+    if (!zipLookup) return
+    try {
+      await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          zipCode: zipCode.trim(),
+          // Omitted (not sent as null) when detection failed, so it doesn't
+          // clobber the zone-7a default a brand-new account already has.
+          ...(zipLookup.zone ? { hardinessZone: zipLookup.zone } : {}),
+          latitude: zipLookup.latitude,
+          longitude: zipLookup.longitude,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
+        }),
+      })
+    } catch {
+      // Ignored - the user can always set this later in Settings.
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -101,6 +157,8 @@ function SetupProfileContent() {
         throw new Error(data.error || 'Failed to save profile')
       }
 
+      await saveLocationIfProvided()
+
       // Update the session with new data
       await update()
       
@@ -113,8 +171,25 @@ function SetupProfileContent() {
     }
   }
 
-  const handleSkip = () => {
-    router.push(callbackUrl)
+  const handleSkip = async () => {
+    // Still records that onboarding happened (with whatever name we have),
+    // so the user isn't sent back here on every visit after skipping.
+    setSaving(true)
+    try {
+      await fetch('/api/auth/setup-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: (name.trim() || session?.user?.name || session?.user?.email?.split('@')[0] || 'Gardener'),
+          username: null,
+        }),
+      })
+      await update()
+    } catch {
+      // Best-effort - if this fails, the user just sees the prompt again next time.
+    } finally {
+      router.push(callbackUrl)
+    }
   }
 
   if (status === 'loading') {
@@ -216,6 +291,44 @@ function SetupProfileContent() {
               ) : (
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Your public username for community contributions. Must be appropriate and in good taste.
+                </p>
+              )}
+            </div>
+
+            {/* ZIP Code Field (optional location) */}
+            <div>
+              <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                ZIP Code <span className="text-gray-400">(optional)</span>
+              </label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  id="zipCode"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={zipCode}
+                  onChange={(e) => setZipCode(e.target.value.replace(/\D/g, ''))}
+                  onBlur={handleZipBlur}
+                  className="w-full pl-10 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-garden-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="32578"
+                />
+                {lookingUpZip && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-gray-400" />
+                )}
+                {!lookingUpZip && zipLookup && (
+                  <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-500" />
+                )}
+              </div>
+              {zipLookupError ? (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{zipLookupError}</p>
+              ) : zipLookup ? (
+                <p className="mt-1 text-xs text-green-600 dark:text-green-400">
+                  {zipLookup.place}{zipLookup.zone ? ` · Zone ${zipLookup.zone}` : ''} - used to pre-fill your growing zone and moon/frost data
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Sets your hardiness zone, frost dates and local moon data automatically. You can change or add this later in Settings.
                 </p>
               )}
             </div>

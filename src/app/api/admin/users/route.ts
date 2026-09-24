@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const search = searchParams.get('search') || ''
     const filter = searchParams.get('filter') || 'all'
+    const sort = searchParams.get('sort') === 'lastActive' ? 'lastActive' : 'joined'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const skip = (page - 1) * limit
@@ -46,6 +47,7 @@ export async function GET(req: NextRequest) {
           username: true,
           role: true,
           createdAt: true,
+          lastActiveAt: true,
           _count: {
             select: {
               seeds: true,
@@ -53,7 +55,9 @@ export async function GET(req: NextRequest) {
             }
           }
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: sort === 'lastActive'
+          ? [{ lastActiveAt: 'desc' }, { createdAt: 'desc' }]
+          : { createdAt: 'desc' },
         skip,
         take: limit
       }),

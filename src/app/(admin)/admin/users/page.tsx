@@ -26,8 +26,25 @@ interface User {
   username: string | null
   role: string
   createdAt: string
+  lastActiveAt: string | null
   seedCount: number
   plantingCount: number
+}
+
+// Coarse relative time so the admin list doesn't need a date library import
+// just for this. Falls back to a locale date string for anything older.
+function formatLastActive(value: string | null): string {
+  if (!value) return 'Never'
+  const then = new Date(value).getTime()
+  const diffMs = Date.now() - then
+  const minute = 60 * 1000
+  const hour = 60 * minute
+  const day = 24 * hour
+  if (diffMs < minute) return 'Just now'
+  if (diffMs < hour) return `${Math.floor(diffMs / minute)}m ago`
+  if (diffMs < day) return `${Math.floor(diffMs / hour)}h ago`
+  if (diffMs < 30 * day) return `${Math.floor(diffMs / day)}d ago`
+  return new Date(value).toLocaleDateString()
 }
 
 export default function UsersPage() {
@@ -35,6 +52,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'admin'>('all')
+  const [sort, setSort] = useState<'joined' | 'lastActive'>('joined')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [actionLoading, setActionLoading] = useState(false)
@@ -52,6 +70,7 @@ export default function UsersPage() {
         page: page.toString(),
         search,
         filter,
+        sort,
       })
       const res = await fetch(`/api/admin/users?${params}`)
       if (res.ok) {
@@ -64,7 +83,7 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, filter])
+  }, [page, search, filter, sort])
 
   useEffect(() => {
     const timer = setTimeout(() => { fetchUsers() }, 300)
@@ -220,6 +239,14 @@ export default function UsersPage() {
               </button>
             ))}
           </div>
+          <select
+            value={sort}
+            onChange={(e) => { setSort(e.target.value as 'joined' | 'lastActive'); setPage(1) }}
+            className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+          >
+            <option value="joined">Sort: Joined date</option>
+            <option value="lastActive">Sort: Last active</option>
+          </select>
         </div>
       </div>
 
@@ -239,6 +266,7 @@ export default function UsersPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Seeds</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Joined</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Active</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -273,6 +301,12 @@ export default function UsersPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                       {new Date(user.createdAt).toLocaleDateString()}
+                    </td>
+                    <td
+                      className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400"
+                      title={user.lastActiveAt ? new Date(user.lastActiveAt).toLocaleString() : undefined}
+                    >
+                      {formatLastActive(user.lastActiveAt)}
                     </td>
                     <td className="px-6 py-4 text-right actions-dropdown">
                       <button

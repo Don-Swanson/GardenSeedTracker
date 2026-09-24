@@ -22,7 +22,10 @@ export default async function MySwapListingsPage() {
   const listings = await prisma.swapListing.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: 'desc' },
-    include: { plantType: { select: { name: true } } },
+    include: {
+      plantType: { select: { name: true } },
+      seed: { select: { id: true, quantity: true, quantityUnit: true } },
+    },
   })
 
   return (
@@ -75,7 +78,7 @@ export default async function MySwapListingsPage() {
                   {plantName}{listing.variety ? ` (${listing.variety})` : ''}
                 </Link>
                 {listing.quantity && <p className="text-sm text-gray-500 dark:text-gray-400">{listing.quantity}</p>}
-                <SwapListingActions listingId={listing.id} status={listing.status} plantName={plantName} />
+                <SwapListingActions listingId={listing.id} status={listing.status} plantName={plantName} seed={listing.seed} />
               </div>
             )
           })}

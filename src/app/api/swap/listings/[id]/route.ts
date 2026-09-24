@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthSession } from '@/lib/auth'
-import { sanitizeText, validateEnum, MAX_LENGTHS } from '@/lib/validation'
+import { sanitizeInteger, sanitizeText, validateEnum, MAX_LENGTHS } from '@/lib/validation'
 import { SWAP_QUANTITY_MAX_LENGTH } from '@/lib/swap'
 
 const EDITABLE_STATUSES = ['active', 'completed', 'closed'] as const
@@ -62,6 +62,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (data.quantity !== undefined) update.quantity = sanitizeText(data.quantity, SWAP_QUANTITY_MAX_LENGTH)
     if (data.shippingOk !== undefined) update.shippingOk = data.shippingOk === true
     if (data.localPickupOk !== undefined) update.localPickupOk = data.localPickupOk !== false
+
+    // Optional: when completing an offer linked to your own inventory, let
+    // this also reduce that seed's quantity - e.g. you gave away 10 seeds
+    // out of the 50 you had. Clamped at 0, never goes negative.
+    const reduceSeedQuantityBy = sanitizeInteger(data.reduceSeedQuantityBy, 1, 1000000)
+    if (update.status === 'completed' && reduceSeedQuantityBy && existing.seedId) {
+      const seed = await prisma.seed.findFirst({ where: { id: existing.seedId, userId: session.user.id }, select: { id: true, quantity: true } })
+      if (seed) {
+        await prisma.seed.update({
+          where: { id: seed.id },
+          data: { quantity: Math.max(0, seed.quantity - reduceSeedQuantityBy) },
+        })
+      }
+    }
 
     const listing = await prisma.swapListing.update({ where: { id }, data: update })
     return NextResponse.json(listing)

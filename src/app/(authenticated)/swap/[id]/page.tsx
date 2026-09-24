@@ -8,6 +8,7 @@ import { ArrowLeft, MapPin, Truck, Package2 } from 'lucide-react'
 import SwapListingActions from '@/components/SwapListingActions'
 import SwapMessageButton from '@/components/SwapMessageButton'
 import SwapReportButton from '@/components/SwapReportButton'
+import SwapAddToInventoryButton from '@/components/SwapAddToInventoryButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,7 @@ export default async function SwapListingDetailPage({ params }: { params: Promis
       include: {
         user: { select: { id: true, username: true, name: true, lastActiveAt: true } },
         plantType: { select: { id: true, name: true, category: true } },
+        seed: { select: { id: true, quantity: true, quantityUnit: true } },
       },
     }),
     prisma.userSettings.findUnique({ where: { userId: session.user.id }, select: { latitude: true, longitude: true } }),
@@ -100,7 +102,16 @@ export default async function SwapListingDetailPage({ params }: { params: Promis
           </div>
 
           {isOwner ? (
-            <SwapListingActions listingId={listing.id} status={listing.status} plantName={plantName} />
+            <SwapListingActions listingId={listing.id} status={listing.status} plantName={plantName} seed={listing.seed} />
+          ) : listing.status === 'completed' && listing.type === 'offer' ? (
+            <div className="flex flex-col items-end gap-2">
+              <SwapAddToInventoryButton
+                plantTypeId={listing.plantType?.id || null}
+                customPlantName={listing.plantType ? null : listing.customPlantName}
+                variety={listing.variety}
+              />
+              <SwapReportButton listingId={listing.id} />
+            </div>
           ) : (
             <div className="flex flex-col items-end gap-2">
               <SwapMessageButton listingId={listing.id} ownerUsername={listing.user.username || 'gardener'} />

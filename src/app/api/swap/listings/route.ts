@@ -33,6 +33,17 @@ export async function GET(req: NextRequest) {
     } else {
       conditions.push({ status: 'active' })
       conditions.push({ OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] })
+
+      // Blocking is mutual for browsing: hide listings from anyone the
+      // viewer blocked, and from anyone who blocked the viewer.
+      const blocks = await prisma.userBlock.findMany({
+        where: { OR: [{ blockerId: session.user.id }, { blockedId: session.user.id }] },
+        select: { blockerId: true, blockedId: true },
+      })
+      const hiddenUserIds = new Set(blocks.flatMap(b => [b.blockerId, b.blockedId]).filter(id => id !== session.user.id))
+      if (hiddenUserIds.size > 0) {
+        conditions.push({ userId: { notIn: Array.from(hiddenUserIds) } })
+      }
     }
     if (type === 'offer' || type === 'want') conditions.push({ type })
     if (shippingOk) conditions.push({ shippingOk: true })

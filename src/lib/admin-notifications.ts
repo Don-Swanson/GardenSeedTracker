@@ -15,6 +15,7 @@ export type AdminNotificationType =
   | 'newPlantSubmission'
   | 'newPlantSuggestion'
   | 'newPlantRequest'
+  | 'newSwapReport'
   | 'errorAlerts'
 
 interface NotificationData {
@@ -209,6 +210,20 @@ export function generateEmailContent(type: AdminNotificationType, data: Notifica
         text: `New Plant Request\n\nPlant: ${data.plantName}\nRequested by: ${data.userEmail || 'User'}\n\nView requests: ${baseUrl}/admin/plants`
       }
 
+    case 'newSwapReport':
+      return {
+        subject: `🚩 Swap Board Report Filed`,
+        html: wrapInTemplate('Swap Board Report', `
+          <p style="color: #374151; line-height: 1.6;">A listing or message on the swap board has been reported:</p>
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 16px 0;">
+            <p style="margin: 0; color: #991b1b;"><strong>Reported by:</strong> ${escapeHtml(data.userEmail || data.userName || 'A user')}</p>
+            ${data.additionalInfo?.reason ? `<p style="margin: 8px 0 0 0; color: #991b1b;"><strong>Reason:</strong> ${escapeHtml(String(data.additionalInfo.reason))}</p>` : ''}
+          </div>
+          <a href="${escapeHtml(baseUrl)}/admin/swap" style="display: inline-block; background: #16a34a; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 500;">Review Report</a>
+        `),
+        text: `Swap Board Report\n\nReported by: ${data.userEmail || data.userName || 'A user'}${data.additionalInfo?.reason ? `\nReason: ${data.additionalInfo.reason}` : ''}\n\nReview: ${baseUrl}/admin/swap`
+      }
+
     case 'errorAlerts':
       return {
         subject: `🚨 System Error Alert`,
@@ -257,6 +272,7 @@ export async function updateAdminNotifications(
     newPlantSubmission?: boolean
     newPlantSuggestion?: boolean
     newPlantRequest?: boolean
+    newSwapReport?: boolean
     dailyDigest?: boolean
     weeklyDigest?: boolean
     errorAlerts?: boolean
@@ -268,7 +284,7 @@ export async function updateAdminNotifications(
   
   const keys = [
     'newUserSignup', 'userDeleted', 'newPlantSubmission',
-    'newPlantSuggestion', 'newPlantRequest', 'dailyDigest', 'weeklyDigest', 'errorAlerts'
+    'newPlantSuggestion', 'newPlantRequest', 'newSwapReport', 'dailyDigest', 'weeklyDigest', 'errorAlerts'
   ] as const
   
   for (const key of keys) {

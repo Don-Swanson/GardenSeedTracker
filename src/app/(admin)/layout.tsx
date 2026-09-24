@@ -16,7 +16,8 @@ import {
   Loader2,
   ClipboardList,
   MessageSquarePlus,
-  Bell
+  Bell,
+  Flag
 } from 'lucide-react'
 
 const adminNavItems = [
@@ -25,6 +26,7 @@ const adminNavItems = [
   { href: '/admin/plants', icon: Leaf, label: 'Plants' },
   { href: '/admin/submissions', icon: FileEdit, label: 'Submissions' },
   { href: '/admin/suggestions', icon: MessageSquarePlus, label: 'Suggestions' },
+  { href: '/admin/swap', icon: Flag, label: 'Swap Reports' },
   { href: '/admin/audit-logs', icon: ClipboardList, label: 'Audit Logs' },
   { href: '/admin/notification-settings', icon: Bell, label: 'Notifications' },
   { href: '/admin/impersonate', icon: UserCog, label: 'Impersonate' },

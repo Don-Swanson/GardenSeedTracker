@@ -37,6 +37,7 @@ export async function PUT(req: NextRequest) {
       'newPlantSubmission',
       'newPlantSuggestion',
       'newPlantRequest',
+      'newSwapReport',
       'dailyDigest',
       'weeklyDigest',
       'errorAlerts'

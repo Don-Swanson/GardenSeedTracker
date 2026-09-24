@@ -1,3 +1,5 @@
+import type { Prisma, PrismaClient } from '@prisma/client'
+
 // Shared constants/helpers for the seed swap board.
 
 export const SWAP_LISTING_EXPIRY_DAYS = 90
@@ -45,6 +47,12 @@ export function shouldSendThreadNotification(lastNotifiedAt: Date | string | nul
   return Date.now() - new Date(lastNotifiedAt).getTime() > SWAP_MESSAGE_NOTIFY_THROTTLE_MS
 }
 
+/**
+ * Coarse, human "how recently active" label for a poster on the swap board.
+ * Deliberately imprecise (unlike the admin user list's exact relative time)
+ * - a stranger on a public board shouldn't be able to tell "this person was
+ * online 4 minutes ago", just a rough sense of whether the account is alive.
+ */
 export function coarseActivityLabel(lastActiveAt: Date | string | null): string | null {
   if (!lastActiveAt) return null
   const then = new Date(lastActiveAt).getTime()
@@ -54,4 +62,24 @@ export function coarseActivityLabel(lastActiveAt: Date | string | null): string 
   if (days < 7) return 'Active this week'
   if (days < 30) return 'Active this month'
   return 'Active a while ago'
+}
+
+type Db = PrismaClient | Prisma.TransactionClient
+
+/**
+ * True if either user has blocked the other. Blocking is safety-oriented,
+ * not a social nicety - checked both directions so a blocked user can't
+ * just re-initiate contact from the other side.
+ */
+export async function isBlockedEitherWay(db: Db, userAId: string, userBId: string): Promise<boolean> {
+  const block = await db.userBlock.findFirst({
+    where: {
+      OR: [
+        { blockerId: userAId, blockedId: userBId },
+        { blockerId: userBId, blockedId: userAId },
+      ],
+    },
+    select: { id: true },
+  })
+  return !!block
 }

@@ -7,6 +7,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, MapPin, Truck, Package2 } from 'lucide-react'
 import SwapListingActions from '@/components/SwapListingActions'
 import SwapMessageButton from '@/components/SwapMessageButton'
+import SwapReportButton from '@/components/SwapReportButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -101,7 +102,10 @@ export default async function SwapListingDetailPage({ params }: { params: Promis
           {isOwner ? (
             <SwapListingActions listingId={listing.id} status={listing.status} plantName={plantName} />
           ) : (
-            <SwapMessageButton listingId={listing.id} ownerUsername={listing.user.username || 'gardener'} />
+            <div className="flex flex-col items-end gap-2">
+              <SwapMessageButton listingId={listing.id} ownerUsername={listing.user.username || 'gardener'} />
+              <SwapReportButton listingId={listing.id} />
+            </div>
           )}
         </div>
       </div>

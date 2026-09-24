@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthSession } from '@/lib/auth'
 import { sanitizeText, checkRateLimit, MAX_LENGTHS } from '@/lib/validation'
-import { SWAP_MESSAGE_MAX_LENGTH, isThreadUnread } from '@/lib/swap'
+import { SWAP_MESSAGE_MAX_LENGTH, isBlockedEitherWay, isThreadUnread } from '@/lib/swap'
 import { notifyThreadParticipant } from '@/lib/swap-notifications'
 
 const threadInclude = {
@@ -78,6 +78,9 @@ export async function POST(req: NextRequest) {
     }
     if (listing.userId === userId) {
       return NextResponse.json({ error: "You can't message yourself about your own listing" }, { status: 400 })
+    }
+    if (await isBlockedEitherWay(prisma, userId, listing.userId)) {
+      return NextResponse.json({ error: 'Unable to message this user' }, { status: 403 })
     }
 
     // One thread per (listing, initiator) - reuse it if it already exists

@@ -43,6 +43,10 @@ model User {
   swapThreadsInitiated SwapThread[] @relation("SwapThreadInitiator")
   swapThreadsOwned     SwapThread[] @relation("SwapThreadOwner")
   swapMessages         SwapMessage[]
+  swapReportsFiled     SwapReport[] @relation("SwapReportsFiled")
+  swapReportsReceived  SwapReport[] @relation("SwapReportsReceived")
+  swapBlocksMade       UserBlock[]  @relation("BlocksMade")
+  swapBlocksReceived   UserBlock[]  @relation("BlocksReceived")
 }
 
 model Account {
@@ -485,6 +489,7 @@ model AdminNotificationSettings {
   newPlantSubmission      Boolean  @default(true)
   newPlantSuggestion      Boolean  @default(true)
   newPlantRequest         Boolean  @default(true)
+  newSwapReport           Boolean  @default(true)  // A swap board listing or message was reported
   
   // System events
   dailyDigest             Boolean  @default(false)  // Daily summary email
@@ -556,6 +561,7 @@ model SwapListing {
   updatedAt       DateTime @updatedAt
 
   swapThreads     SwapThread[]
+  reports         SwapReport[]
 
   @@index([userId])
   @@index([status])
@@ -607,7 +613,53 @@ model SwapMessage {
   body      String
   createdAt DateTime   @default(now())
 
+  reports   SwapReport[]
+
   @@index([threadId])
+}
+
+// A report against a listing and/or a specific message. At least one of
+// listingId/messageId is set; reportedUserId is denormalized (the listing
+// owner or message sender) purely so admins can filter/sort by who's being
+// reported without joining through both optional relations.
+model SwapReport {
+  id             String   @id @default(cuid())
+  reporterId     String
+  reporter       User     @relation("SwapReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  listingId      String?
+  listing        SwapListing? @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  messageId      String?
+  message        SwapMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  reportedUserId String?
+  reportedUser   User?    @relation("SwapReportsReceived", fields: [reportedUserId], references: [id], onDelete: Cascade)
+
+  reason         String
+  status         String   @default("pending") // "pending", "resolved", "dismissed"
+  adminNotes     String?
+  reviewedById   String?
+  reviewedAt     DateTime?
+
+  createdAt      DateTime @default(now())
+
+  @@index([status])
+  @@index([reporterId])
+  @@index([reportedUserId])
+}
+
+// One-directional block: blockerId doesn't want to see blockedId's listings
+// or receive messages from them. Checked both ways when messaging (neither
+// party can message the other once either has blocked).
+model UserBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blocker   User     @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
 }
 
 // ==================== CSRF TOKENS ====================

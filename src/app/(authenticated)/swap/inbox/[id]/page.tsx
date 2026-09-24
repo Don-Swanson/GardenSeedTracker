@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback, use } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { ArrowLeft, Send } from 'lucide-react'
+import SwapReportButton from '@/components/SwapReportButton'
+import SwapBlockButton from '@/components/SwapBlockButton'
 
 interface Message {
   id: string
@@ -73,17 +75,28 @@ export default function SwapConversationPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 flex flex-col h-[calc(100vh-12rem)]">
-      <div>
-        <Link href="/swap/inbox" className="text-sm text-garden-600 dark:text-garden-400 hover:underline flex items-center gap-1 w-fit">
-          <ArrowLeft className="w-4 h-4" /> Back to Inbox
-        </Link>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white mt-2">
-          @{thread.otherUser.username || 'gardener'}
-          <span className="text-sm font-normal text-gray-500 dark:text-gray-400"> · about {plantName}</span>
-        </h1>
-        <Link href={`/swap/${thread.listing.id}`} className="text-xs text-garden-600 dark:text-garden-400 hover:underline">
-          View listing →
-        </Link>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <Link href="/swap/inbox" className="text-sm text-garden-600 dark:text-garden-400 hover:underline flex items-center gap-1 w-fit">
+            <ArrowLeft className="w-4 h-4" /> Back to Inbox
+          </Link>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white mt-2">
+            @{thread.otherUser.username || 'gardener'}
+            <span className="text-sm font-normal text-gray-500 dark:text-gray-400"> · about {plantName}</span>
+          </h1>
+          <Link href={`/swap/${thread.listing.id}`} className="text-xs text-garden-600 dark:text-garden-400 hover:underline">
+            View listing →
+          </Link>
+        </div>
+        <div className="flex flex-col items-end gap-1 pt-1">
+          <SwapBlockButton userId={thread.otherUser.id} username={thread.otherUser.username || 'gardener'} />
+          {(() => {
+            const theirLastMessage = [...thread.messages].reverse().find(m => m.senderId === thread.otherUser.id)
+            return theirLastMessage
+              ? <SwapReportButton messageId={theirLastMessage.id} label="Report user" />
+              : <SwapReportButton listingId={thread.listing.id} label="Report user" />
+          })()}
+        </div>
       </div>
 
       <div className="card flex-1 overflow-y-auto space-y-3">

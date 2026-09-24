@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthSession } from '@/lib/auth'
 import { sanitizeText, checkRateLimit } from '@/lib/validation'
-import { SWAP_MESSAGE_MAX_LENGTH } from '@/lib/swap'
+import { SWAP_MESSAGE_MAX_LENGTH, isBlockedEitherWay } from '@/lib/swap'
 import { notifyThreadParticipant } from '@/lib/swap-notifications'
 
 // POST /api/swap/threads/[id]/messages - reply in an existing conversation
@@ -40,6 +40,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const isInitiator = thread.initiatorId === userId
+    const otherPartyId = isInitiator ? thread.ownerId : thread.initiatorId
+    if (await isBlockedEitherWay(prisma, userId, otherPartyId)) {
+      return NextResponse.json({ error: 'Unable to send messages in this conversation' }, { status: 403 })
+    }
     const recipientId = isInitiator ? thread.ownerId : thread.initiatorId
 
     // One shared timestamp - see the note in /api/swap/threads about why
